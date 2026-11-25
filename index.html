@@ -389,7 +389,7 @@ function shrink(file){return new Promise(res=>{if(!file||!file.size||!/^image\//
     c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',.6))};
   img.onerror=()=>{URL.revokeObjectURL(url);res(null)};img.src=url})}
 
-function adminLeute(){const link=location.origin&&location.origin!=='null'?location.origin+location.pathname+'?e='+S.set.code:'(Link entsteht, sobald die App online ist)';
+function adminLeute(){const link=!S.set.code?'(Code fehlt – bitte „Neuer Link“ tippen)':location.origin&&location.origin!=='null'?location.origin+location.pathname+'?e='+S.set.code:'(Link entsteht, sobald die App online ist)';
   const ms=S.members.filter(m=>m.active).map(m=>({m,L:ledger(m.id)})).sort((a,b)=>a.m.name.localeCompare(b.m.name,'de'));
   const sel=ui.person&&member(ui.person);
   let h=`<div class="top"><h1>Leute</h1><span class="mut sm">${ms.length} aktiv</span></div>

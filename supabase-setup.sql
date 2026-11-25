@@ -431,6 +431,22 @@ revoke execute on function public.make_claim_code(uuid), public.claim_member(tex
 grant execute on function public.make_claim_code(uuid), public.claim_member(text), public.delete_extra(text),
   public.join_group(text, text) to authenticated;
 
+-- ---------- Update 2 (bereits enthalten) ----------
+
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+-- Einladungscode, Geräte-Codes und Konto-IDs bleiben für Mitglieder unlesbar (nur ausgewählte Spalten)
+revoke select on public.settings from authenticated;
+grant select (id, price, flat_price, flat_from, flat_until, max_players, start_time, end_time,
+  anchor, loc_mo, loc_di) on public.settings to authenticated;
+revoke select on public.members from authenticated;
+grant select (id, name, active, helper, created_at) on public.members to authenticated;
+
+-- Nicht angemeldete Besucher weiterhin ohne Zugriff
+revoke all on all tables in schema public from anon;
+
 -- ---------- Verwalter freischalten (später, einmalig) ----------
 -- 1. Der Onkel registriert sich in der App mit seiner E-Mail.
 -- 2. Dann diese Zeile mit seiner E-Mail ausführen:
