@@ -543,7 +543,7 @@ const RF={
   claim:async d=>{if(!authUser){chk(await sb.auth.signInAnonymously());authUser=(await sb.auth.getSession()).data.session?.user||null}
     await rpc('claim_member',{claim:d.claim});await whoAmI();flash('Willkommen zurück')},
   login:async d=>{chk(await sb.auth.signInWithPassword({email:d.email.trim(),password:d.pw}));await whoAmI()},
-  signup:async d=>{const r=chk(await sb.auth.signUp({email:d.email.trim(),password:d.pw}));
+  signup:async d=>{const r=chk(await sb.auth.signUp({email:d.email.trim(),password:d.pw,options:{emailRedirectTo:location.origin+location.pathname}}));
     if(r.session)await whoAmI();else flash('Bitte E-Mail bestätigen (Link im Postfach), dann anmelden')},
   join:async d=>{const n=d.name.trim();if(!n)return;
     if(!authUser){chk(await sb.auth.signInAnonymously());authUser=(await sb.auth.getSession()).data.session?.user||null}
