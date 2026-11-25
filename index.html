@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1c1a19">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Halle">
+<title>Hallen-App</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: sachlich, knapp, wie eine Hallenanzeige.
+   IDEA: Anzeigetafel in der Sporthalle (Entwurf C).
+   PICTURE: die große Zahl oben: wer kommt / wer ist da / Kassenstand.
+   COLOUR/TYPE: dunkles Braungrau, Signalrot als Akzent, Gelb = zugesagt, Grün = da; Oswald + Inter.
+   LAYOUT: eine Spalte, Handy zuerst, max. 520px breit. */
+:root{color-scheme:dark;--bg:#1c1a19;--card:#2a2725;--line:#34302d;--ink:#f3eee8;--mut:#a9a29a;--acc:#ff6b57;--yel:#f2c14e;--grn:#58c77b;--brd:#4a4542}
+*{box-sizing:border-box;min-width:0}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Inter,system-ui,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+#app{max-width:520px;margin:0 auto;padding:env(safe-area-inset-top) 0 calc(24px + env(safe-area-inset-bottom))}
+.os{font-family:Oswald,Impact,sans-serif;text-transform:uppercase;letter-spacing:.01em}
+.mut{color:var(--mut)}.sm{font-size:13px}
+.demo{background:#000;border-bottom:1px solid var(--line);padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--mut)}
+.demo b{color:var(--yel);font-weight:600}
+.demo select,.demo input{font-size:14px;min-height:36px;background:var(--card);color:var(--ink);border:1px solid var(--brd);border-radius:8px;padding:4px 8px}
+.top{padding:20px 16px 8px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.top h1{font:700 26px/1.05 Oswald,sans-serif;text-transform:uppercase;margin:0}
+.score{margin:6px 12px;border-radius:14px;background:var(--card);padding:16px;text-align:center}
+.score .os{font-size:14px;color:var(--acc)}
+.score .n{font:700 clamp(52px,17vw,72px)/1 Oswald,sans-serif;margin:6px 0;white-space:nowrap}
+.score .n span{color:var(--mut);font-size:.5em}
+.ctas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 12px}
+.ctas.one{grid-template-columns:1fr}
+button,.btn{font:700 16px Oswald,sans-serif;text-transform:uppercase;min-height:52px;border-radius:12px;border:1px solid var(--brd);background:transparent;color:var(--ink);cursor:pointer;padding:0 14px}
+button.on{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+button.go{background:var(--grn);border-color:var(--grn);color:var(--bg)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--yel);outline-offset:2px}
+.mk{min-height:44px;padding:0 12px;border-radius:9px;border:1px solid var(--grn);color:var(--grn);font-size:14px;white-space:nowrap;flex:none}
+.mk.on{background:var(--grn);color:var(--bg)}
+.mk.red{border-color:var(--acc);color:var(--acc)}
+.mk.red.on{background:var(--acc);color:var(--bg)}
+.mk.gr{border-color:var(--brd);color:var(--mut)}
+.h{font:500 14px Oswald,sans-serif;text-transform:uppercase;color:var(--mut);margin:22px 14px 6px;display:flex;justify-content:space-between}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px;margin:0 12px}
+.grid div{background:var(--card);border-radius:8px;padding:8px 4px;text-align:center;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grid i,.dot{display:block;width:9px;height:9px;border-radius:50%;margin:0 auto 4px;background:#5b5550}
+.grid .c i,.dot.c{background:var(--yel)}.grid .d i,.dot.d{background:var(--grn)}
+.grid .me{outline:1px solid var(--acc)}
+.leg{display:flex;flex-wrap:wrap;gap:14px;margin:8px 14px;font-size:13px;color:var(--mut)}
+.leg .dot{display:inline-block;margin:0 5px 0 0}
+.row{display:flex;justify-content:space-between;align-items:center;margin:0 12px;padding:10px 4px;border-bottom:1px solid var(--line);gap:10px}
+.row>.t{flex:1}
+.row small{color:var(--mut);font-size:13px;display:block}
+.row .amt{font:700 18px Oswald,sans-serif;white-space:nowrap}
+.tap{cursor:pointer}
+.x{opacity:.5;text-decoration:line-through}
+.owe{margin:12px;padding:14px;border-radius:12px;border:1px dashed var(--acc);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.owe b{font:700 30px Oswald,sans-serif;color:var(--acc);white-space:nowrap}
+.owe.ok{border-color:var(--grn)}.owe.ok b{color:var(--grn)}
+.bar{height:10px;border-radius:5px;background:var(--line);margin:8px 0 6px;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:8px 12px 0;position:sticky;top:0;background:var(--bg);padding:6px 0;z-index:2}
+.tabs button{min-height:44px;font-size:14px;border-radius:10px}
+form.f{margin:0 12px;display:grid;gap:8px}
+label{font-size:13px;color:var(--mut);display:grid;gap:4px}
+input,select{font:16px Inter,sans-serif;min-height:46px;background:var(--card);color:var(--ink);border:1px solid var(--brd);border-radius:10px;padding:8px 12px;width:100%}
+input[type=checkbox]{width:22px;min-height:22px;accent-color:var(--grn)}
+.chk{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:15px;min-height:44px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.note{margin:10px 12px;padding:10px 12px;border-radius:10px;background:var(--card);font-size:13px;color:var(--mut)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;max-width:90vw;z-index:9;animation:up .2s}
+.tabs.five{grid-template-columns:repeat(5,1fr)}.tabs.five button{font-size:13px;padding:0 4px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8;display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+.ov img{max-width:100%;max-height:100%;border-radius:8px}
+.cats{display:grid;grid-template-columns:1fr auto;gap:2px 12px;margin:0 16px;font-size:14px}
+.cats span:nth-child(even){text-align:right;font-variant-numeric:tabular-nums}
+.verdict{margin:6px 12px;border-radius:14px;padding:14px 16px;border:2px solid var(--grn)}
+.verdict.bad{border-color:var(--acc)}
+.verdict .big{font:700 26px Oswald,sans-serif;text-transform:uppercase}
+.verdict .cats{margin:8px 0 0}
+#print{display:none}
+@media print{body{background:#fff;color:#000}#app{display:none}#print{display:block;font:12px Arial,sans-serif;color:#000}
+#print table{border-collapse:collapse;width:100%}#print th,#print td{border-bottom:1px solid #999;padding:4px 6px;text-align:left}#print td.n{text-align:right;white-space:nowrap}}
+#app.busy{opacity:.6;pointer-events:none}
+.bar2{display:flex;justify-content:flex-end;gap:8px;padding:8px 12px 0;font-size:13px;color:var(--mut);align-items:center}
+@keyframes up{from{opacity:0;transform:translate(-50%,10px)}}
+@media(prefers-reduced-motion:reduce){.toast{animation:none}}
+.pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--line);color:var(--mut);margin-left:6px;vertical-align:2px;font-family:Inter,sans-serif;text-transform:none}
+.pill.r{background:var(--acc);color:var(--bg)}.pill.y{background:var(--yel);color:var(--bg)}.pill.g{background:var(--grn);color:var(--bg)}
+.empty{margin:6px 16px;color:var(--mut);font-size:14px}
+.join{padding:40px 16px}
+.join h1{font:700 40px/1.05 Oswald,sans-serif;text-transform:uppercase;margin:0 0 10px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="supabase.js"></script>
+<div id="print"></div>
+<script>
+{
+/* ---------- Online-Konfiguration (Publishable key ist öffentlich, Schutz über RLS) ---------- */
+const CFG={url:'https://bnpfkgwyfzvssqxkheqb.supabase.co',key:'sb_publishable_Bnh2O0H2PP8GEOHJlHcDzg_cLx4C-Ii'};
+const ONLINE=!!(CFG.url&&window.supabase)&&!/[?&]demo\b/.test(location.search);
+/* ---------- Speicher (Demo: nur dieses Gerät) ---------- */
+const KEY='hallenapp-v1', mem={};
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
+
+/* ---------- Datum & Format ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const ds=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const add=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return ds(d)};
+const WD=['So','Mo','Di','Mi','Do','Fr','Sa'];
+const fd=s=>{const d=pd(s);return WD[d.getDay()]+' '+pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'};
+const fdy=s=>{const d=pd(s);return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()};
+const eur=n=>{const r=Math.round(n*100)/100;return r.toLocaleString('de-DE',{minimumFractionDigits:r%1?2:0,maximumFractionDigits:2})+' €'};
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sum=a=>a.reduce((t,x)=>t+(+x.amt||0),0);
+const uid=()=>Math.random().toString(36).slice(2,9);
+const num=v=>{let x=String(v).trim().replace(/\s|€/g,'');
+  if(x.includes(','))x=x.replace(/\./g,'').replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(x))x=x.replace(/\./g,'');
+  if(!/^-?\d+(\.\d+)?$/.test(x))return NaN;return parseFloat(x)};
+const realToday=()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}catch(e){return ds(new Date())}};
+
+/* ---------- Beispieldaten ---------- */
+function seed(){
+  const names=['Ali','Ben','Chris','Daniel','Emre','Felix','Hakan','Jonas','Kai','Lukas','Marco','Niko','Omar','Paul','Robin','Sven','Tim','Yusuf','Zoran','Leon'];
+  const members=names.map((n,i)=>({id:'m'+i,name:n,flat:null,active:true,helper:i===7}));
+  const s={v:2,
+    set:{price:2,flatPrice:30,flatFrom:'2026-11-30',flatUntil:'2026-12-31',max:18,start:'20:00',end:'22:00',anchor:'2026-11-30',locMo:'Isengarten-Halle',locDi:'Wiederhol-Halle',code:uid()},
+    members,ovr:{},extras:[],sign:{},att:{},pay:[],exp:[],inc:[]};
+  members[16].flat={amount:30,from:'2026-11-30',until:'2026-12-31'}; // Tim zahlt pauschal
+  s.sign['2026-11-30']=names.slice(0,19).map((_,i)=>'m'+i);       // 19 Zusagen: 18 + 1 Warteliste
+  s.sign['2026-12-01']=['m0','m2','m4','m7','m9','m10','m13','m19'];
+  s.sign['2026-12-07']=['m1','m3','m7','m11','m12'];
+  s.att['2026-11-30']={};
+  ['m0','m1','m2','m4','m5','m9','m16'].forEach(id=>s.att['2026-11-30'][id]={self:true,ovr:null,price:2});
+  s.pay.push({id:uid(),mid:'m16',amt:30,date:'2026-11-30',note:'Pauschale'});
+  s.exp.push({id:uid(),label:'Hallenmiete Nov.–Dez. (Beispielbetrag)',cat:'Hallenmiete',amount:400,date:'2026-12-31',monthly:false,end:null,receipt:null});
+  s.exp.push({id:uid(),label:'Ballpumpe',cat:'Material',amount:12,date:'2026-11-30',monthly:false,end:null,receipt:null});
+  return s;
+}
+let S; if(ONLINE)S={v:2,set:{price:2,flatPrice:30,flatFrom:'2026-11-30',flatUntil:'2026-12-31',max:18,start:'20:00',end:'22:00',anchor:'2026-11-30',locMo:'',locDi:'',code:''},members:[],ovr:{},extras:[],sign:{},att:{},pay:[],exp:[],inc:[]};
+else{try{S=JSON.parse(ls.get(KEY))}catch(e){} if(!S||S.v!==2){S=seed();ls.set(KEY,JSON.stringify(S))}}
+if(!S.inc)S.inc=[];
+let ui; try{ui=JSON.parse(ls.get(KEY+'-ui'))}catch(e){} ui=Object.assign({who:'admin',tab:'termine',sel:null,sim:'2026-11-30',confirm:null,msg:null},ui||{});
+if(ONLINE){ui.who='loading';ui.sim=null}
+const save=()=>{if(ONLINE)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){if(e&&e.name==='QuotaExceededError'){try{S=JSON.parse(localStorage.getItem(KEY))||S}catch(_){}flash('Speicher voll – letzte Änderung NICHT gespeichert. Ohne Beleg erneut versuchen.')}else ls.set(KEY,JSON.stringify(S))}ls.set(KEY+'-ui',JSON.stringify({who:ui.who,tab:ui.tab,sim:ui.sim}))};
+const today=()=>ui.sim||realToday();
+
+/* ---------- Termine ---------- */
+function sportOf(date){
+  const dow=pd(date).getDay(), mon=dow===1?date:add(date,-1);
+  const w=Math.floor(Math.round((pd(mon)-pd(S.set.anchor))/864e5)/7);
+  const monSport=(((w%2)+2)%2===0)?'Fußball':'Volleyball';
+  return dow===1?monSport:(monSport==='Fußball'?'Volleyball':'Fußball');
+}
+function mk(base){const o=S.ovr[base.id]||{};return {...base,sport:o.sport||base.sport,loc:o.loc||base.loc,cancelled:!!o.cancelled}}
+function regular(d){const w=pd(d).getDay();if(d<S.set.anchor||(w!==1&&w!==2))return null;
+  return mk({id:d,date:d,start:S.set.start,end:S.set.end,sport:sportOf(d),loc:w===1?S.set.locMo:S.set.locDi,extra:false})}
+function sessions(a,b){const out=[];let d=a<S.set.anchor?S.set.anchor:a;
+  while(d<=b){const r=regular(d);if(r)out.push(r);d=add(d,1)}
+  S.extras.forEach(x=>{if(x.date>=a&&x.date<=b)out.push(mk({...x,extra:true}))});
+  return out.sort((x,y)=>(x.date+x.start).localeCompare(y.date+y.start))}
+function getS(id){if(id.startsWith('x')){const x=S.extras.find(e=>e.id===id);return x?mk({...x,extra:true}):null}return regular(id)}
+const list=sid=>S.sign[sid]||[];
+const conf=sid=>list(sid).slice(0,S.set.max);
+const wait=sid=>list(sid).slice(S.set.max);
+const att=(sid,mid)=>(S.att[sid]||{})[mid];
+const present=(sid,mid)=>{const a=att(sid,mid);return !!a&&(a.ovr??a.self)};
+const presentCount=sid=>Object.keys(S.att[sid]||{}).filter(m=>present(sid,m)).length;
+const member=id=>S.members.find(m=>m.id===id);
+const nm=id=>member(id)?.name||'?';
+const canSeeWait=mid=>mid==='admin'||!!member(mid)?.helper; // Onkel + freigeschaltete Helfer
+const status=(sid,mid)=>{const i=list(sid).indexOf(mid);return i<0?null:i<S.set.max?'conf':'wait'};
+
+function join(sid,mid){if(!list(sid).includes(mid))S.sign[sid]=[...list(sid),mid];return status(sid,mid)}
+function leave(sid,mid){const was=conf(sid);S.sign[sid]=list(sid).filter(x=>x!==mid);
+  const a=att(sid,mid);if(a&&a.ovr==null)delete S.att[sid][mid];
+  const moved=conf(sid).filter(x=>!was.includes(x));return moved}
+function setAtt(sid,mid,patch){S.att[sid]=S.att[sid]||{};const a=S.att[sid][mid]||{self:false,ovr:null,price:S.set.price};Object.assign(a,patch);S.att[sid][mid]=a}
+
+/* ---------- Geld ---------- */
+function ledger(mid){const m=member(mid),items=[];
+  for(const sid in S.att){const a=S.att[sid][mid];if(!a||!(a.ovr??a.self))continue;const s=getS(sid);if(!s||s.cancelled||s.date>today())continue;
+    const f=m.flat;if(f&&s.date>=f.from&&s.date<=f.until)continue;
+    items.push({date:s.date,label:'Besuch '+s.sport,amt:a.price})}
+  if(m.flat)items.push({date:m.flat.from,label:'Pauschale bis '+fdy(m.flat.until),amt:m.flat.amount});
+  items.sort((a,b)=>a.date.localeCompare(b.date));
+  const paid=S.pay.filter(p=>p.mid===mid&&p.date<=today());
+  const due=sum(items),got=sum(paid);return {items,paid,due,got,open:Math.round((due-got)*100)/100}}
+function occ(e,until){if(!e.monthly)return e.date<=until?[{date:e.date,amt:e.amount}]:[];
+  const out=[],[y,m,d]=e.date.split('-').map(Number);
+  for(let i=0;i<600;i++){const yy=y+Math.floor((m-1+i)/12),mm=(m-1+i)%12,last=new Date(yy,mm+1,0).getDate();
+    const dt=yy+'-'+pad(mm+1)+'-'+pad(Math.min(d,last));if(dt>until||(e.end&&dt>e.end))break;out.push({date:dt,amt:e.amount})}
+  return out}
+const CATS=['Hallenmiete','Material','Sonstiges'];
+/* Kassenbuch: alle gebuchten Ein- und Ausgaben bis heute, chronologisch */
+function book(){const t=today(),rows=[];
+  S.pay.forEach(p=>{if(p.date<=t)rows.push({date:p.date,kind:'in',cat:'Teilnehmerbeitrag',text:nm(p.mid)+(p.note?' · '+p.note:''),amt:p.amt,ref:'p:'+p.id})});
+  S.inc.forEach(i=>{if(i.date<=t)rows.push({date:i.date,kind:'in',cat:i.cat||'Sonstige Einnahme',text:i.label,amt:i.amount,ref:'i:'+i.id,receipt:i.receipt})});
+  S.exp.forEach(e=>occ(e,t).forEach(o=>rows.push({date:o.date,kind:'out',cat:e.cat||'Sonstiges',text:e.label+(e.monthly?' ('+fd(o.date).slice(3)+')':''),amt:o.amt,ref:'e:'+e.id,receipt:e.receipt})));
+  rows.sort((a,b)=>a.date.localeCompare(b.date)||(a.kind==='in'?-1:1));
+  let bal=0;rows.forEach(r=>{bal+=r.kind==='in'?r.amt:-r.amt;r.bal=Math.round(bal*100)/100});return rows}
+/* geplante Ausgaben nach heute bis Ende des Zeitraums (z. B. Hallenmiete am Ende) */
+function planned(){const t=today(),hz=S.exp.reduce((m,e)=>!e.monthly&&e.date>m?e.date:m,S.set.flatUntil),out=[];
+  S.exp.forEach(e=>occ(e,hz).forEach(o=>{if(o.date>t)out.push({e,date:o.date,amt:o.amt})}));return out.sort((a,b)=>a.date.localeCompare(b.date))}
+function kasse(){const B=book(),inc=B.filter(r=>r.kind==='in').reduce((t,r)=>t+r.amt,0),out=B.filter(r=>r.kind==='out').reduce((t,r)=>t+r.amt,0);return {inc,out,bal:Math.round((inc-out)*100)/100}}
+
+/* ---------- Bausteine ---------- */
+const flash=t=>{ui.msg=t;clearTimeout(flash.t);flash.t=setTimeout(()=>{ui.msg=null;render()},3200)};
+const sure=(key,label,act,id,x='',cls='mk red')=>ui.confirm===key
+  ?`<button class="${cls} on" data-a="${act}" data-id="${esc(id)}" data-x="${esc(x)}">Sicher?</button>`
+  :`<button class="${cls}" data-a="ask" data-id="${esc(key)}">${label}</button>`;
+const nameGrid=(sid,me)=>{const c=conf(sid);if(!c.length)return '<p class="empty">Noch keine Zusagen.</p>';
+  return `<div class="grid">${c.map(id=>`<div class="${present(sid,id)?'d':'c'}${id===me?' me':''}"><i></i>${esc(nm(id))}</div>`).join('')}</div>
+  <div class="leg"><span><i class="dot c"></i>zugesagt</span><span><i class="dot d"></i>da</span></div>`};
+const waitList=sid=>{const w=wait(sid);return w.length?`<div class="h"><span>Warteliste</span><span>${w.length}</span></div>`+w.map((id,i)=>`<div class="row"><span class="t">${i+1}. ${esc(nm(id))}</span></div>`).join(''):''};
+const sessLine=s=>`${fd(s.date)} · ${esc(s.start)}–${esc(s.end)} Uhr`;
+
+function demoBar(){const opts=[`<option value="admin"${ui.who==='admin'?' selected':''}>Verwalter (Onkel)</option>`,
+  ...S.members.filter(m=>m.active).map(m=>`<option value="${esc(m.id)}"${ui.who===m.id?' selected':''}>${esc(m.name)}</option>`),
+  `<option value="new"${ui.who==='new'?' selected':''}>Neu über Einladungslink</option>`].join('');
+  return `<div class="demo"><b>Demo</b><label class="sm" style="display:flex;gap:6px;align-items:center">Ansicht <select data-c="who">${opts}</select></label>
+  <label class="sm" style="display:flex;gap:6px;align-items:center">Heute ist <input type="date" data-c="sim" value="${esc(ui.sim||realToday())}"></label>
+  ${sure('reset','Zurücksetzen','reset','', '', 'mk gr')}</div>`}
+
+/* ---------- Teilnehmer ---------- */
+function viewJoin(){return `<div class="join"><div class="os mut">Einladung</div><h1>Hallensport<br>Mo & Di</h1>
+  <p class="mut">20–22 Uhr · Fußball und Volleyball im Wechsel. Gib deinen Namen ein, dann kannst du zusagen.</p>
+  <form class="f" data-f="join" style="margin:18px 0 0"><label>Dein Name<input name="name" required maxlength="30" autocomplete="given-name"></label><button class="on">Mitmachen</button></form>${ONLINE?'<p style="margin-top:22px"><button class="mk gr" data-a="toClaim">Ich war schon dabei (Geräte-Code)</button></p>':''}</div>`}
+
+function viewMember(mid){const m=member(mid);if(!m)return viewJoin();
+  const t=today(),up=sessions(t,add(t,27));const focus=up.find(s=>!s.cancelled)||up[0];
+  const sw=canSeeWait(mid);
+  let h=`<div class="top"><div><h1>${focus?esc(focus.sport):'Keine Termine'}</h1>${focus?`<div class="mut sm">${focus.date===t?'Heute, ':''}${sessLine(focus)}<br>${esc(focus.loc)}</div>`:''}</div><div class="mut sm">${esc(m.name)}${m.helper?'<br>Helfer':''}</div></div>`;
+  if(focus){const sid=focus.id,st=status(sid,mid),isToday=focus.date===t,here=present(sid,mid),c=conf(sid).length;
+    h+=focus.cancelled?`<div class="score"><div class="os">Abgesagt</div><div class="n">–</div><small class="mut">Dieser Termin fällt aus.</small></div>`
+     :isToday?`<div class="score"><div class="os">Heute in der Halle</div><div class="n">${presentCount(sid)}</div><small class="mut">von ${c} Zusagen · max. ${S.set.max}</small></div>`
+     :`<div class="score"><div class="os">Zusagen</div><div class="n">${c}<span>/${S.set.max}</span></div><small class="mut">${sw&&wait(sid).length?wait(sid).length+' auf der Warteliste':c>=S.set.max?'voll':(S.set.max-c)+' Plätze frei'}</small></div>`;
+    if(!focus.cancelled){
+      const kBtn=st==='conf'?(here?`<button disabled>Zugesagt</button>`:`<button class="on" data-a="leave" data-id="${esc(sid)}">Absagen</button>`)
+        :st==='wait'?`<button data-a="leave" data-id="${esc(sid)}">Warteliste ${list(sid).indexOf(mid)-S.set.max+1} · raus</button>`
+        :`<button class="on" data-a="join" data-id="${esc(sid)}">${c>=S.set.max?'Auf Warteliste':'Ich komme'}</button>`;
+      const dBtn=here?`<button class="go" data-a="unhere" data-id="${esc(sid)}">Ich bin da ✓</button>`
+        :`<button data-a="here" data-id="${esc(sid)}" ${isToday&&st!=='wait'&&(st==='conf'||c<S.set.max)?'':'disabled'}>Ich bin da</button>`;
+      h+=`<div class="ctas">${kBtn}${dBtn}</div>`;
+      if(!isToday)h+=`<p class="empty sm" style="text-align:center">„Ich bin da“ geht am Termintag.</p>`;
+      if(st==='wait')h+=`<div class="note">Du stehst auf der Warteliste. Sagt jemand ab, rückst du automatisch nach.</div>`;
+    }
+    h+=`<div class="h"><span>${isToday?'Wer ist da':'Wer kommt'}</span><span>${c}/${S.set.max}</span></div>`+nameGrid(sid,mid)+(sw?waitList(sid):'');
+  }
+  const rest=up.filter(s=>s!==focus).slice(0,6);
+  h+=`<div class="h"><span>Nächste Termine</span></div>`+(rest.length?rest.map(s=>{const st=status(s.id,mid),c=conf(s.id).length;
+    const b=s.cancelled?`<span class="pill r">Abgesagt</span>`:st==='conf'?`<button class="mk on" data-a="leave" data-id="${esc(s.id)}">Komme ✓</button>`
+      :st==='wait'?`<button class="mk gr" data-a="leave" data-id="${esc(s.id)}">Warteliste ${list(s.id).indexOf(mid)-S.set.max+1}</button>`
+      :`<button class="mk" data-a="join" data-id="${esc(s.id)}">${c>=S.set.max?'Warteliste':'Ich komme'}</button>`;
+    return `<div class="row"><span class="t${s.cancelled?' x':''}">${fd(s.date)} · ${esc(s.sport)}<small>${esc(s.loc)} · ${c}/${S.set.max}${sw&&wait(s.id).length?' · '+wait(s.id).length+' warten':''}</small></span>${b}</div>`}).join(''):'<p class="empty">Keine weiteren Termine.</p>');
+  const L=ledger(mid);
+  h+=`<div class="h"><span>Mein Geld</span><span>nur für dich</span></div>
+  <div class="owe${L.open<=0?' ok':''}"><span>${L.open<0?'Mein Guthaben':'Mein offener Betrag'}<small class="mut" style="display:block;font-size:13px">${m.flat?'Pauschale '+eur(m.flat.amount)+' bis '+fdy(m.flat.until):eur(S.set.price)+' pro Besuch, nur wenn du da warst'}</small></span><b>${eur(Math.abs(L.open))}</b></div>`;
+  const hist=[...L.items.map(i=>({...i,k:'c'})),...L.paid.map(p=>({date:p.date,label:'Bezahlt',amt:p.amt,k:'p'}))].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  h+=hist.map(i=>`<div class="row"><span class="t">${esc(i.label)}<small>${fdy(i.date)}</small></span><span class="amt"${i.k==='p'?' style="color:var(--grn)"':''}>${i.k==='p'?'+':''}${eur(i.amt)}</span></div>`).join('');
+  return h}
+
+/* ---------- Verwalter ---------- */
+function viewAdmin(){const tabs=[['termine','Termine'],['kasse','Kasse'],['buch','Buch'],['leute','Leute'],['einst','Einst.']];
+  let h=`<div class="tabs five">${tabs.map(([k,l])=>`<button class="${ui.tab===k?'on':''}" data-a="tab" data-id="${k}">${l}</button>`).join('')}</div>`;
+  if(ui.tab==='termine')h+=ui.sel&&getS(ui.sel)?adminSession(getS(ui.sel)):adminSessions();
+  if(ui.tab==='kasse')h+=adminKasse();
+  if(ui.tab==='buch')h+=adminBuch();
+  if(ui.tab==='leute')h+=adminLeute();
+  if(ui.tab==='einst')h+=adminEinst();
+  return h}
+
+function adminSessions(){const t=today(),all=sessions(add(t,-21),add(t,28));
+  const row=s=>{const c=conf(s.id).length,w=wait(s.id).length,p=presentCount(s.id);
+    return `<div class="row tap" data-a="sel" data-id="${esc(s.id)}"><span class="t${s.cancelled?' x':''}">${fd(s.date)} · ${esc(s.sport)}${s.date===t?'<span class="pill y">heute</span>':''}${s.extra?'<span class="pill">extra</span>':''}${s.cancelled?'<span class="pill r">abgesagt</span>':''}<small>${esc(s.loc)} · ${esc(s.start)}–${esc(s.end)}</small></span>
+    <span class="mut sm" style="text-align:right;white-space:nowrap">${c}/${S.set.max}${w?' +'+w:''}<br>${s.date<=t?p+' da':''}</span></div>`};
+  const fut=all.filter(s=>s.date>=t),past=all.filter(s=>s.date<t).reverse();
+  return `<div class="top"><h1>Termine</h1><span class="mut sm">Mo + Di automatisch</span></div>
+  ${fut.map(row).join('')||'<p class="empty">Keine kommenden Termine.</p>'}
+  <div class="h"><span>Extra-Termin anlegen</span></div>
+  <form class="f" data-f="extra"><div class="two"><label>Datum<input type="date" name="date" required value="${esc(t)}"></label>
+  <label>Sport<select name="sport"><option>Fußball</option><option>Volleyball</option></select></label></div>
+  <div class="two"><label>Beginn<input type="time" name="start" value="${esc(S.set.start)}" required></label><label>Ende<input type="time" name="end" value="${esc(S.set.end)}" required></label></div>
+  <label>Ort<input name="loc" value="${esc(S.set.locMo)}" required maxlength="60"></label><button class="on">Extra-Termin speichern</button></form>
+  ${past.length?`<div class="h"><span>Vergangene Termine</span></div>`+past.map(row).join(''):''}`}
+
+function adminSession(s){const sid=s.id,t=today(),c=conf(sid),w=wait(sid);
+  const others=S.members.filter(m=>m.active&&!list(sid).includes(m.id)&&!present(sid,m.id));
+  const extraPresent=Object.keys(S.att[sid]||{}).filter(id=>!list(sid).includes(id)&&present(sid,id));
+  const prow=(id,lbl)=>{const p=present(sid,id),a=att(sid,id);
+    return `<div class="row"><span class="t">${lbl}${esc(nm(id))}<small>${a&&a.ovr!=null?'vom Verwalter '+(a.ovr?'bestätigt':'ausgetragen'):a&&a.self?'selbst eingecheckt':'noch nicht da'}</small></span>
+    <button class="mk${p?' on':''}" data-a="toggleHere" data-id="${esc(sid)}" data-x="${esc(id)}">${p?'Da ✓':'Da?'}</button>
+    ${ui.confirm==='rm'+id?`<button class="mk red on" data-a="adminLeave" data-id="${esc(sid)}" data-x="${esc(id)}">Sicher?</button>`:`<button class="mk red" data-a="ask" data-id="rm${esc(id)}" aria-label="Von Liste nehmen">✕</button>`}</div>`};
+  return `<div class="top"><div><button class="mk gr" data-a="sel" data-id="">← Zurück</button></div><span class="mut sm">${s.extra?'Extra-Termin':'Regeltermin'}</span></div>
+  <div class="score"><div class="os">${esc(s.sport)} · ${fd(s.date)}</div><div class="n">${presentCount(sid)}<span>/${c.length}</span></div><small class="mut">da / Zusagen · ${esc(s.start)}–${esc(s.end)} · ${esc(s.loc)}${s.cancelled?' · ABGESAGT':''}</small></div>
+  <div class="ctas">${s.cancelled?`<button class="go" data-a="uncancel" data-id="${esc(sid)}">Wieder ansetzen</button>`:sure('cx'+sid,'Absagen','cancel',sid,'','on')}
+  <button data-a="swapSport" data-id="${esc(sid)}">Sport tauschen</button></div>
+  ${!s.cancelled&&presentCount(sid)?`<div class="note">Achtung: Bei Absage werden die ${presentCount(sid)} als „da“ markierten Besuche nicht abgerechnet.</div>`:''}
+  <form class="f" data-f="loc" data-id="${esc(sid)}"><label>Ort nur für diesen Termin<div style="display:flex;gap:8px"><input name="loc" value="${esc(s.loc)}" maxlength="60" required><button class="mk" style="min-height:46px">OK</button></div></label></form>
+  <div class="h"><span>Zusagen</span><span>${c.length}/${S.set.max}</span></div>
+  ${c.map(id=>prow(id,'')).join('')||'<p class="empty">Noch keine Zusagen.</p>'}
+  ${w.length?`<div class="h"><span>Warteliste</span><span>${w.length}</span></div>`+w.map((id,i)=>prow(id,(i+1)+'. ')).join(''):''}
+  ${extraPresent.length?`<div class="h"><span>Ohne Zusage da</span></div>`+extraPresent.map(id=>prow(id,'')).join(''):''}
+  ${others.length?`<div class="h"><span>Person hinzufügen</span></div><form class="f" data-f="addTo" data-id="${esc(sid)}"><div style="display:flex;gap:8px"><select name="mid">${others.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select><button class="mk" style="min-height:46px">Dazu</button></div></form>`:''}
+  ${s.extra?`<div class="ctas one" style="margin-top:20px">${sure('del'+sid,'Extra-Termin löschen','delExtra',sid,'','')}</div>`:''}
+  ${s.date>t?'<div class="note">Anwesenheit kann vorab schon gesetzt werden. Abgerechnet wird nur, wer als „da“ markiert ist.</div>':''}`}
+
+function adminKasse(){const K=kasse(),t=today();const tot=K.inc+K.out||1;
+  const open=S.members.map(m=>({m,L:ledger(m.id)})).filter(x=>x.L.open>0).sort((a,b)=>b.L.open-a.L.open);
+  const openSum=open.reduce((s,x)=>s+x.L.open,0);
+  const P=planned(),pSum=sum(P),prog=Math.round((K.bal+openSum-pSum)*100)/100,last=P.length?P[P.length-1].date:null;
+  const exps=S.exp.map(e=>({e,o:occ(e,t)})).sort((a,b)=>b.e.date.localeCompare(a.e.date));
+  return `<div class="top"><h1>Kasse</h1><span class="mut sm">nur für dich sichtbar</span></div>
+  <div class="score"><div class="os">Kassenstand heute</div><div class="n" style="${K.bal<0?'color:var(--acc)':''}">${eur(K.bal)}</div>
+  <div class="bar"><i style="width:${K.inc/tot*100}%;background:var(--grn)"></i><i style="width:${K.out/tot*100}%;background:var(--acc)"></i></div>
+  <small class="mut">Einnahmen ${eur(K.inc)} · Ausgaben ${eur(K.out)}</small></div>
+  ${P.length?`<div class="verdict${prog<0?' bad':''}"><div class="os mut sm">Reicht es bis ${fdy(last)}?</div>
+   <div class="big" style="color:${prog<0?'var(--acc)':'var(--grn)'}">${prog<0?'Es fehlen '+eur(-prog):'Reicht · '+eur(prog)+' übrig'}</div>
+   <div class="cats"><span>Kassenstand heute</span><span>${eur(K.bal)}</span><span>+ noch offen bei Teilnehmern</span><span>${eur(openSum)}</span>
+   ${P.map(x=>`<span>− ${esc(x.e.label)} (${fdy(x.date)})</span><span>${eur(x.amt)}</span>`).join('')}</div>
+   <small class="mut" style="display:block;margin-top:6px">Annahme: Alle offenen Beträge werden noch bezahlt. Künftige Besuche sind noch nicht eingerechnet.</small></div>`
+   :`<div class="note">Tipp: Trag die Hallenmiete mit dem Zahltag (z. B. ${fdy(S.set.flatUntil)}) als Ausgabe ein. Dann zeigt die Kasse, ob das Geld bis dahin reicht.</div>`}
+  <div class="h"><span>Offene Zahlungen</span><span>${eur(openSum)}</span></div>
+  ${open.map(({m,L})=>{const n=L.items.filter(i=>i.label.startsWith('Besuch')).length;
+    return `<div class="row"><span class="t">${esc(m.name)}<small>${m.flat?'Pauschale':''}${m.flat&&n?' + ':''}${n?n+' Besuch'+(n>1?'e':''):''}</small></span><span class="amt">${eur(L.open)}</span><button class="mk" data-a="paid" data-id="${esc(m.id)}">Bezahlt</button></div>`}).join('')||'<p class="empty">Alle haben bezahlt.</p>'}
+  <div class="h"><span>Ausgabe eintragen</span></div>
+  <form class="f" data-f="exp"><div class="two"><label>Betrag in €<input name="amount" inputmode="decimal" placeholder="z. B. 400" required></label><label>Datum (Zahltag)<input type="date" name="date" value="${esc(t)}" required></label></div>
+  <div class="two"><label>Kategorie<select name="cat">${CATS.map(c=>`<option>${c}</option>`).join('')}</select></label><label>Wofür<input name="label" placeholder="z. B. Hallenmiete Dez." required maxlength="60"></label></div>
+  <label>Beleg (Foto, optional)<input type="file" name="receipt" accept="image/*"></label>
+  <label class="chk"><input type="checkbox" name="monthly"> Jeden Monat wiederholen</label>
+  <small class="mut">Liegt das Datum in der Zukunft, gilt die Ausgabe als geplant und zählt erst ab dem Zahltag.</small>
+  <button class="on">Ausgabe speichern</button></form>
+  <div class="h"><span>Ausgaben</span><span>${eur(K.out)} bezahlt</span></div>
+  ${exps.map(({e,o})=>{const fut=e.date>t;
+    return `<div class="row"><span class="t">${esc(e.label)}${fut?'<span class="pill y">geplant</span>':''}<small>${esc(e.cat||'Sonstiges')} · ${e.monthly?`monatlich ab ${fdy(e.date)}${e.end?' bis '+fdy(e.end):''} · ${o.length}× gebucht`:fdy(e.date)}${e.receipt?' · <a href="#" data-a="beleg" data-id="e:'+esc(e.id)+'" style="color:var(--yel)">Beleg</a>':''}</small></span><span class="amt">−${eur(e.amount)}</span>
+    ${fut&&!e.monthly?`<button class="mk" data-a="payNow" data-id="${esc(e.id)}">Bezahlt</button>`:''}${e.monthly&&!e.end?sure('st'+e.id,'Stopp','stopExp',e.id,'','mk gr'):''}${e.monthly&&o.length?'':sure('de'+e.id,'✕','delExp',e.id)}</div>`}).join('')||'<p class="empty">Noch keine Ausgaben.</p>'}
+  <p class="empty sm">Monatliche Ausgaben mit schon gebuchten Monaten lassen sich nur stoppen, nicht löschen, damit das Kassenbuch stimmt.</p>`}
+
+function months(rows){return [...new Set(rows.map(r=>r.date.slice(0,7)))].sort().reverse()}
+const MN=['Jan.','Feb.','März','April','Mai','Juni','Juli','Aug.','Sep.','Okt.','Nov.','Dez.'];
+const mLabel=m=>MN[+m.slice(5)-1]+' '+m.slice(0,4);
+function bookFiltered(){const all=book();return ui.month?all.filter(r=>r.date.startsWith(ui.month)):all}
+function adminBuch(){if(ui.month&&!months(book()).includes(ui.month))ui.month=null;const all=book(),rows=bookFiltered(),t=today();
+  const inS=rows.filter(r=>r.kind==='in').reduce((a,r)=>a+r.amt,0),outS=rows.filter(r=>r.kind==='out').reduce((a,r)=>a+r.amt,0);
+  const byCat={};rows.forEach(r=>{const k=(r.kind==='in'?'+ ':'− ')+r.cat;byCat[k]=(byCat[k]||0)+r.amt});
+  const ms=months(all);
+  return `<div class="top"><h1>Kassenbuch</h1><span class="mut sm">alle Buchungen</span></div>
+  <form class="f"><label>Zeitraum<select data-c="month"><option value="">Alles</option>${ms.map(m=>`<option value="${m}"${ui.month===m?' selected':''}>${mLabel(m)}</option>`).join('')}</select></label></form>
+  <div class="score"><div class="os">${ui.month?mLabel(ui.month):'Gesamt'}</div><div class="n" style="font-size:44px">${eur(inS-outS)}</div><small class="mut">Einnahmen ${eur(inS)} · Ausgaben ${eur(outS)}</small></div>
+  ${Object.keys(byCat).length?`<div class="h"><span>Nach Kategorie</span></div><div class="cats">${Object.entries(byCat).map(([k,v])=>`<span>${esc(k)}</span><span>${eur(v)}</span>`).join('')}</div>`:''}
+  <div class="h"><span>Export</span></div>
+  <div class="ctas"><button data-a="csv">Excel (CSV)</button><button data-a="pdf">PDF / Drucken</button></div>
+  <div class="ctas one" style="margin-top:0"><button class="mk gr" data-a="copyCsv">Als Tabelle kopieren</button></div>
+  <p class="empty sm">In der Claude-Vorschau sind Download und Drucken gesperrt. Dort „Als Tabelle kopieren“ nutzen und in Excel einfügen. In der fertigen App gehen alle drei.</p>
+  <div class="h"><span>Buchungen</span><span>${rows.length}</span></div>
+  ${rows.slice().reverse().map(r=>{const [k,id]=r.ref.split(':');
+    const del=k==='p'?sure('up'+id,'Rückg.','undoPay',id,'','mk gr'):k==='i'?sure('di'+id,'✕','delInc',id):'';
+    return `<div class="row"><span class="t">${esc(r.text)}<small>${fdy(r.date)} · ${esc(r.cat)}${r.receipt?' · <a href="#" data-a="beleg" data-id="'+esc(r.ref)+'" style="color:var(--yel)">Beleg</a>':''} · Saldo ${eur(r.bal)}</small></span>
+    <span class="amt" style="color:${r.kind==='in'?'var(--grn)':'var(--acc)'}">${r.kind==='in'?'+':'−'}${eur(r.amt)}</span>${del}</div>`}).join('')||'<p class="empty">Keine Buchungen in diesem Zeitraum.</p>'}
+  <div class="h"><span>Sonstige Einnahme eintragen</span></div>
+  <form class="f" data-f="inc"><div class="two"><label>Betrag in €<input name="amount" inputmode="decimal" placeholder="z. B. 20" required></label><label>Datum<input type="date" name="date" value="${esc(t)}" max="${esc(t)}" required></label></div>
+  <label>Wofür<input name="label" placeholder="z. B. Spende, Restgeld" required maxlength="60"></label>
+  <label>Beleg (Foto, optional)<input type="file" name="receipt" accept="image/*"></label>
+  <button class="on">Einnahme speichern</button></form>
+  <p class="empty sm">Teilnehmerbeiträge kommen automatisch hierher, wenn du sie unter „Kasse“ als bezahlt markierst.</p>`}
+
+/* Export */
+const deNum=n=>(Math.round(n*100)/100).toFixed(2).replace('.',',');
+const cell=v=>{let x=String(v??'');if(/^[=+\-@\t\r]/.test(x)&&!/^-?\d+,\d\d$/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"'};
+function csv(){const rows=bookFiltered();const head=['Datum','Art','Kategorie','Beschreibung','Einnahme','Ausgabe','Saldo','Beleg'];
+  return [head.map(cell).join(';'),...rows.map(r=>[fdy(r.date),r.kind==='in'?'Einnahme':'Ausgabe',r.cat,r.text,r.kind==='in'?deNum(r.amt):'',r.kind==='out'?deNum(r.amt):'',deNum(r.bal),r.receipt?'ja':''].map(cell).join(';'))].join('\r\n')}
+const safe=x=>/^[=+\-@]/.test(x)?"'"+x:x;
+function tsv(){const rows=bookFiltered();return ['Datum\tArt\tKategorie\tBeschreibung\tEinnahme\tAusgabe\tSaldo',...rows.map(r=>[fdy(r.date),r.kind==='in'?'Einnahme':'Ausgabe',safe(r.cat),safe(r.text.replace(/[\t\n]/g,' ')),r.kind==='in'?deNum(r.amt):'',r.kind==='out'?deNum(r.amt):'',deNum(r.bal)].join('\t'))].join('\n')}
+function printBook(){const rows=bookFiltered(),inS=rows.filter(r=>r.kind==='in').reduce((a,r)=>a+r.amt,0),outS=rows.filter(r=>r.kind==='out').reduce((a,r)=>a+r.amt,0);
+  document.getElementById('print').innerHTML=`<h2>Kassenbuch ${ui.month?esc(mLabel(ui.month)):'gesamt'}</h2><p>Stand ${fdy(today())} · Einnahmen ${eur(inS)} · Ausgaben ${eur(outS)} · Ergebnis ${eur(inS-outS)}</p>
+  <table><thead><tr><th>Datum</th><th>Kategorie</th><th>Beschreibung</th><th>Einnahme</th><th>Ausgabe</th><th>Saldo</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fdy(r.date)}</td><td>${esc(r.cat)}</td><td>${esc(r.text)}</td><td class="n">${r.kind==='in'?eur(r.amt):''}</td><td class="n">${r.kind==='out'?eur(r.amt):''}</td><td class="n">${eur(r.bal)}</td></tr>`).join('')}</tbody></table>`}
+function shrink(file){return new Promise(res=>{if(!file||!file.size||!/^image\//.test(file.type))return res(null);
+  const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{const k=Math.min(1,1000/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',.6))};
+  img.onerror=()=>{URL.revokeObjectURL(url);res(null)};img.src=url})}
+
+function adminLeute(){const link=location.origin&&location.origin!=='null'?location.origin+location.pathname+'?e='+S.set.code:'(Link entsteht, sobald die App online ist)';
+  const ms=S.members.filter(m=>m.active).map(m=>({m,L:ledger(m.id)})).sort((a,b)=>a.m.name.localeCompare(b.m.name,'de'));
+  const sel=ui.person&&member(ui.person);
+  let h=`<div class="top"><h1>Leute</h1><span class="mut sm">${ms.length} aktiv</span></div>
+  <div class="note">Einladungslink für die Gruppe:<br><span style="color:var(--ink);word-break:break-all">${esc(link)}</span></div>
+  <div class="ctas"><button data-a="copy" data-id="${esc(link)}">Link kopieren</button>${ONLINE?sure('nc','Neuer Link','newCode','','','')
+  :'<button disabled>Neuer Link</button>'}</div><p class="empty sm">„Neuer Link“ macht den alten ungültig, z. B. wenn jemand entfernt wurde. Wer schon dabei ist, bleibt dabei.</p>`;
+  if(sel){const L=ledger(sel.id);
+    h+=`<div class="h"><span>${esc(sel.name)}</span><button class="mk gr" style="min-height:32px" data-a="person" data-id="">schließen</button></div>
+    <div class="row"><span class="t">Tarif<small>${sel.flat?'Pauschale '+eur(sel.flat.amount)+' ('+fdy(sel.flat.from)+'–'+fdy(sel.flat.until)+')':eur(S.set.price)+' pro Besuch'}</small></span>
+      <button class="mk${sel.flat?'':' on'}" data-a="plan" data-id="${esc(sel.id)}" data-x="visit">${eur(S.set.price)}</button><button class="mk${sel.flat?' on':''}" data-a="plan" data-id="${esc(sel.id)}" data-x="flat">Pauschale</button></div>
+    <div class="row"><span class="t">Offen<small>Forderungen ${eur(L.due)} · bezahlt ${eur(L.got)}</small></span><span class="amt">${eur(L.open)}</span></div>
+    <div class="row"><span class="t">Darf Warteliste sehen<small>Helfer sehen die Warteliste aller Termine. Wartende sehen sonst nur ihren eigenen Platz.</small></span><button class="mk${sel.helper?' on':''}" data-a="helper" data-id="${esc(sel.id)}">${sel.helper?'Ja ✓':'Nein'}</button></div>
+    <form class="f" data-f="payAmt" data-id="${esc(sel.id)}" style="margin-top:8px"><label>Zahlung erfassen (Betrag in €)<div style="display:flex;gap:8px"><input name="amt" inputmode="decimal" required placeholder="${L.open>0?String(L.open).replace('.',','):'z. B. 10'}"><button class="mk" style="min-height:46px">Buchen</button></div></label></form>
+    <form class="f" data-f="rename" data-id="${esc(sel.id)}" style="margin-top:8px"><label>Name ändern<div style="display:flex;gap:8px"><input name="name" value="${esc(sel.name)}" required maxlength="30"><button class="mk" style="min-height:46px">OK</button></div></label></form>
+    ${ONLINE?`<div class="row"><span class="t">Geräte-Code<small>Für neues Handy/Browser oder wenn du die Person selbst angelegt hast. Trennt das bisherige Gerät.</small></span>${ui.claimShown&&ui.claimShown.mid===sel.id?`<span class="amt" style="color:var(--yel);user-select:all">${esc(ui.claimShown.c)}</span>`:sure('cc'+sel.id,'Erstellen','claimCode',sel.id,'','mk')}</div>`:''}
+    <div class="ctas one">${sure('ar'+sel.id,'Person entfernen (Verlauf bleibt)','archive',sel.id,'','')}</div>`}
+  h+=`<div class="h"><span>Alle</span><span>offen</span></div>`+ms.map(({m,L})=>`<div class="row tap" data-a="person" data-id="${esc(m.id)}"><span class="t">${esc(m.name)}<small>${m.flat?'Pauschale':eur(S.set.price)+' pro Besuch'}${m.helper?' · Helfer':''}</small></span><span class="amt"${L.open>0?' style="color:var(--acc)"':''}>${eur(L.open)}</span></div>`).join('');
+  h+=`<div class="h"><span>Person hinzufügen</span></div><form class="f" data-f="addMember"><div style="display:flex;gap:8px"><input name="name" required maxlength="30" placeholder="Name"><button class="mk" style="min-height:46px">Dazu</button></div></form>`;
+  return h}
+
+function adminEinst(){const s=S.set;
+  return `<div class="top"><h1>Einstellungen</h1></div>
+  <form class="f" data-f="settings">
+  <div class="two"><label>Preis pro Besuch (€)<input name="price" inputmode="decimal" value="${esc(String(s.price).replace('.',','))}" required></label><label>Pauschale (€)<input name="flatPrice" inputmode="decimal" value="${esc(String(s.flatPrice).replace('.',','))}" required></label></div>
+  <div class="two"><label>Pauschale gilt ab<input type="date" name="flatFrom" value="${esc(s.flatFrom)}" required></label><label>Pauschale gilt bis<input type="date" name="flatUntil" value="${esc(s.flatUntil)}" required></label></div>
+  <label>Max. Teilnehmer pro Termin<input name="max" type="number" min="1" max="99" value="${esc(s.max)}" required></label>
+  <div class="two"><label>Beginn<input type="time" name="start" value="${esc(s.start)}" required></label><label>Ende<input type="time" name="end" value="${esc(s.end)}" required></label></div>
+  <label>Halle montags<input name="locMo" value="${esc(s.locMo)}" required maxlength="60"></label>
+  <label>Halle dienstags<input name="locDi" value="${esc(s.locDi)}" required maxlength="60"></label>
+  <button class="on">Speichern</button></form>
+  <div class="note">Sportwechsel: Woche ab Mo ${fdy(s.anchor)} montags Fußball, dienstags Volleyball; jede Folgewoche umgekehrt.<br>Preisänderungen gelten für neue Anwesenheiten; bereits erfasste Besuche behalten ihren Preis. Neue Pauschalen nutzen den neuen Betrag und Zeitraum.</div>`}
+
+/* ---------- Online-Betrieb (Supabase) ---------- */
+let sb=null,authUser=null,isAdmin=false,myId=null,lastLoad=0;
+const CODE_KEY='halle-code';
+const inviteCode=()=>{try{const q=new URLSearchParams(location.search).get('e');if(q){ls.set(CODE_KEY,q);return q}}catch(e){}return ls.get(CODE_KEY)};
+const chk=r=>{if(r.error)throw r.error;return r.data};
+const rpc=async(f,a)=>chk(await sb.rpc(f,a||{}));
+const T=n=>sb.from(n);
+function errText(e){const m=(e&&(e.message||e.error_description))||String(e);
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m))return 'Keine Verbindung – bitte später nochmal';
+  if(/Invalid login credentials/i.test(m))return 'E-Mail oder Passwort falsch';
+  if(/Email not confirmed/i.test(m))return 'Bitte zuerst die E-Mail bestätigen (Link im Postfach)';
+  if(/members_name_active/i.test(m))return 'Den Namen gibt es schon';
+  if(/duplicate key/i.test(m))return 'Ist schon eingetragen';
+  return m.length>120?m.slice(0,120)+'…':m}
+const hm=t=>(t||'').slice(0,5);
+async function whoAmI(){const {data}=await sb.auth.getSession();authUser=data.session?.user||null;isAdmin=false;myId=null;
+  if(authUser){isAdmin=!!(await rpc('is_admin'));if(!isAdmin)myId=await rpc('my_member_id')}
+  ui.who=isAdmin?'admin':myId?myId:authUser&&!authUser.is_anonymous?'pending':inviteCode()?'new':(ui.who==='login'?'login':'nolink')}
+let gen=0;
+async function reload(){if(!authUser||(!isAdmin&&!myId))return;const my=++gen;
+  const st=chk(await T('settings').select('price,flat_price,flat_from,flat_until,max_players,start_time,end_time,anchor,loc_mo,loc_di').eq('id',1).maybeSingle());
+  if(!st){await whoAmI();return}
+  const N={v:2,members:[],ovr:{},extras:[],sign:{},att:{},pay:[],exp:[],inc:[]};
+  N.set={price:+st.price,flatPrice:+st.flat_price,flatFrom:st.flat_from,flatUntil:st.flat_until,max:st.max_players,start:hm(st.start_time),end:hm(st.end_time),anchor:st.anchor,locMo:st.loc_mo,locDi:st.loc_di,code:''};
+  const priv=isAdmin;
+  const jobs=[T('members').select('id,name,active,helper,created_at').order('created_at'),T('member_plans').select('*'),T('extra_sessions').select('*'),
+    T('session_overrides').select('*'),T('attendance').select('*'),T('payments').select('*')];
+  if(priv)jobs.push(T('incomes').select('*'),T('expenses').select('*'));
+  const res=(await Promise.all(jobs)).map(chk);const [mem,plans,ex,ov,at,pay]=res;
+  N.members=mem.map(m=>({id:m.id,name:m.name,active:m.active,helper:m.helper,flat:null}));
+  plans.forEach(p=>{const m=N.members.find(x=>x.id===p.member_id);if(m)m.flat={amount:+p.flat_amount,from:p.flat_from,until:p.flat_until}});
+  N.extras=ex.map(x=>({id:'x'+x.id,date:x.day,start:hm(x.start_time),end:hm(x.end_time),sport:x.sport,loc:x.loc}));
+  ov.forEach(o=>{N.ovr[o.session_key]={cancelled:o.cancelled,sport:o.sport||undefined,loc:o.loc||undefined}});
+  at.forEach(a=>{(N.att[a.session_key]=N.att[a.session_key]||{})[a.member_id]={self:a.self_checked,ovr:a.admin_override,price:+a.price}});
+  N.pay=pay.map(p=>({id:p.id,mid:p.member_id,amt:+p.amount,date:p.day,note:p.note||''}));
+  if(priv){N.inc=res[6].map(i=>({id:i.id,label:i.label,cat:i.category,amount:+i.amount,date:i.day,receipt:i.receipt}));
+    N.exp=res[7].map(e=>({id:e.id,label:e.label,cat:e.category,amount:+e.amount,date:e.day,monthly:e.monthly,end:e.end_day,receipt:e.receipt}));
+    N.set.code=await rpc('get_invite_code')}
+  const me=myId&&N.members.find(x=>x.id===myId);
+  if(isAdmin||me?.helper){chk(await T('signups').select('session_key,member_id,created_at,id').order('created_at').order('id')).forEach(x=>(N.sign[x.session_key]=N.sign[x.session_key]||[]).push(x.member_id))}
+  else{const prev=S;S=N;const t=today(),keys=sessions(t,add(t,27)).map(s=>s.id);S=prev;
+    const rs=await Promise.all(keys.map(k=>sb.rpc('roster',{k}).then(chk)));
+    keys.forEach((k,i)=>{const arr=[];rs[i].forEach(x=>{arr[x.pos-1]=x.member_id});for(let j=0;j<arr.length;j++)if(!arr[j])arr[j]='_'+j;if(arr.length)N.sign[k]=arr})}
+  if(my!==gen)return;   // ein neuerer Ladevorgang hat übernommen
+  S=N;lastLoad=Date.now()}
+async function boot(){render();
+  try{sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'halle-auth'}});
+    await whoAmI();await reload()}catch(e){ui.who='offline';ui.err=errText(e)}
+  render();
+  const bg=async()=>{if(busy)return;busy=true;try{if(ui.who==='offline'||ui.who==='loading')await whoAmI();await reload();render()}catch(e){}finally{busy=false}};
+  setInterval(()=>{if(document.hidden||Date.now()-lastLoad<25000)return;
+    const tag=document.activeElement?.tagName;if(['INPUT','SELECT','TEXTAREA'].includes(tag)||ui.confirm)return;bg()},5000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastLoad>10000)bg()});
+  try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}}
+
+function onlineBar(){const out=authUser&&!authUser.is_anonymous?`<button class="mk gr" style="min-height:34px" data-a="logout">Abmelden</button>`:'';
+  return out?`<div class="bar2">${isAdmin?'Verwalter':'Angemeldet'}${authUser.email?' · '+esc(authUser.email):''} ${out}</div>`:''}
+const OV={
+  loading:()=>`<div class="join"><h1>Hallensport</h1><p class="mut">Lädt…</p></div>`,
+  offline:()=>`<div class="join"><h1>Keine Verbindung</h1><p class="mut">${esc(ui.err||'')}</p><div class="ctas one"><button class="on" data-a="refresh">Erneut versuchen</button></div></div>`,
+  claim:()=>`<div class="join"><div class="os mut">Schon dabei gewesen?</div><h1>Geräte-Code</h1>
+    <p class="mut">Neues Handy, anderer Browser oder vom Verwalter eingetragen? Hol dir beim Verwalter einen Geräte-Code und gib ihn hier ein.</p>
+    <form class="f" data-f="claim" style="margin:16px 0 0"><label>Geräte-Code<input name="claim" required maxlength="12" autocomplete="off" autocapitalize="characters"></label><button class="on">Übernehmen</button></form>
+    <p style="margin-top:22px"><button class="mk gr" data-a="toStart">Zurück</button></p></div>`,
+  nolink:()=>`<div class="join"><div class="os mut">Hallensport Mo & Di</div><h1>Bitte über den<br>Einladungslink öffnen</h1>
+    <p class="mut">Den Link bekommst du vom Verwalter. Hast du nur den Code, gib ihn hier ein.</p>
+    <form class="f" data-f="code" style="margin:16px 0 0"><label>Einladungscode<input name="code" required maxlength="40" autocomplete="off"></label><button class="on">Weiter</button></form>
+    <p style="margin-top:28px;display:flex;gap:8px;flex-wrap:wrap"><button class="mk gr" data-a="toClaim">Ich habe einen Geräte-Code</button><button class="mk gr" data-a="toLogin">Verwalter-Anmeldung</button></p></div>`,
+  login:()=>`<div class="join"><div class="os mut">Verwalter</div><h1>Anmelden</h1>
+    <form class="f" data-f="login" style="margin:16px 0 0"><label>E-Mail<input type="email" name="email" required autocomplete="username"></label>
+    <label>Passwort<input type="password" name="pw" required minlength="8" autocomplete="current-password"></label>
+    <button class="on" name="mode" value="in">Anmelden</button></form>
+    <form class="f" data-f="signup" style="margin:22px 0 0"><p class="mut sm" style="margin:0">Noch kein Konto? Einmalig registrieren (mind. 8 Zeichen). Danach die E-Mail bestätigen; die Freischaltung als Verwalter macht Regie.</p>
+    <label>E-Mail<input type="email" name="email" required autocomplete="username"></label><label>Passwort<input type="password" name="pw" required minlength="8" autocomplete="new-password"></label>
+    <button>Konto anlegen</button></form>
+    <p style="margin-top:22px"><button class="mk gr" data-a="toStart">Zurück</button></p></div>`,
+  pending:()=>`<div class="join"><div class="os mut">Verwalter</div><h1>Noch nicht<br>freigeschaltet</h1>
+    <p class="mut">Du bist als ${esc(authUser?.email||'')} angemeldet. Regie muss dieses Konto einmalig als Verwalter freischalten. Danach hier neu laden.</p>
+    <div class="ctas"><button class="on" data-a="refresh">Neu laden</button><button data-a="logout">Abmelden</button></div></div>`
+};
+const R={
+  logout:async()=>{await sb.auth.signOut();S={...S,members:[],sign:{},att:{},pay:[],exp:[],inc:[],set:{...S.set,code:''}};await whoAmI()},
+  toClaim:async()=>{ui.who='claim'},
+  toLogin:async()=>{ui.who='login'},
+  toStart:async()=>{await whoAmI()},
+  refresh:async()=>{await whoAmI()},
+  join:async sid=>{const pos=await rpc('sign_up',{k:sid});flash(pos<=S.set.max?'Du bist dabei':'Termin voll – Warteliste Platz '+(pos-S.set.max))},
+  leave:async sid=>{await rpc('withdraw',{k:sid});flash('Abgesagt')},
+  here:async sid=>{await rpc('check_in',{k:sid});flash('Eingecheckt')},
+  unhere:async sid=>{await rpc('check_out',{k:sid})},
+  toggleHere:async(sid,mid)=>{const a=att(sid,mid),v=!present(sid,mid);
+    if(a)chk(await T('attendance').update({admin_override:v}).eq('session_key',sid).eq('member_id',mid));
+    else chk(await T('attendance').insert({session_key:sid,member_id:mid,self_checked:false,admin_override:v,price:S.set.price}))},
+  adminLeave:async(sid,mid)=>{if(present(sid,mid))return flash(nm(mid)+' ist als „da“ markiert – erst auf „Da?“ zurücksetzen');
+    chk(await T('signups').delete().eq('session_key',sid).eq('member_id',mid));flash(nm(mid)+' entfernt')},
+  cancel:async sid=>{await setOvr(sid,{cancelled:true});flash('Termin abgesagt')},
+  uncancel:async sid=>{await setOvr(sid,{cancelled:false})},
+  swapSport:async sid=>{const s=getS(sid);await setOvr(sid,{sport:s.sport==='Fußball'?'Volleyball':'Fußball'})},
+  delExtra:async sid=>{await rpc('delete_extra',{k:sid});ui.sel=null;flash('Extra-Termin gelöscht')},
+  claimCode:async mid=>{const c=await rpc('make_claim_code',{mid});ui.claimShown={mid,c}},
+  paid:async mid=>{const L=ledger(mid);if(L.open>0){chk(await T('payments').insert({member_id:mid,amount:L.open,day:today()}));flash(nm(mid)+': '+eur(L.open)+' als bezahlt gebucht')}},
+  undoPay:async id=>{chk(await T('payments').delete().eq('id',id));flash('Zahlung storniert')},
+  payNow:async id=>{chk(await T('expenses').update({day:today()}).eq('id',id));flash('Als bezahlt gebucht')},
+  delInc:async id=>{chk(await T('incomes').delete().eq('id',id));flash('Einnahme gelöscht')},
+  delExp:async id=>{chk(await T('expenses').delete().eq('id',id));flash('Ausgabe gelöscht')},
+  stopExp:async id=>{chk(await T('expenses').update({end_day:today()}).eq('id',id));flash('Wiederholung beendet')},
+  plan:async(mid,x)=>{if(x==='flat')chk(await T('member_plans').upsert({member_id:mid,flat_amount:S.set.flatPrice,flat_from:S.set.flatFrom,flat_until:S.set.flatUntil}));
+    else chk(await T('member_plans').delete().eq('member_id',mid))},
+  helper:async mid=>{const m=member(mid);chk(await T('members').update({helper:!m.helper}).eq('id',mid));flash(m.name+(m.helper?' sieht die Warteliste nicht mehr':' darf die Warteliste sehen'))},
+  archive:async mid=>{chk(await T('members').update({active:false}).eq('id',mid));
+    const keys=Object.keys(S.sign).filter(k=>{const x=getS(k);return x&&x.date>=today()});
+    if(keys.length)chk(await T('signups').delete().eq('member_id',mid).in('session_key',keys));ui.person=null;flash('Person entfernt')},
+  newCode:async()=>{S.set.code=await rpc('new_invite_code');flash('Neuer Einladungslink erstellt – bitte neu verschicken')}
+};
+async function setOvr(sid,patch){const o={...(S.ovr[sid]||{}),...patch};
+  chk(await T('session_overrides').upsert({session_key:sid,cancelled:!!o.cancelled,sport:o.sport||null,loc:o.loc||null}))}
+const RF={
+  code:async d=>{ls.set(CODE_KEY,d.code.trim());ui.who='new'},
+  claim:async d=>{if(!authUser){chk(await sb.auth.signInAnonymously());authUser=(await sb.auth.getSession()).data.session?.user||null}
+    await rpc('claim_member',{claim:d.claim});await whoAmI();flash('Willkommen zurück')},
+  login:async d=>{chk(await sb.auth.signInWithPassword({email:d.email.trim(),password:d.pw}));await whoAmI()},
+  signup:async d=>{const r=chk(await sb.auth.signUp({email:d.email.trim(),password:d.pw}));
+    if(r.session)await whoAmI();else flash('Bitte E-Mail bestätigen (Link im Postfach), dann anmelden')},
+  join:async d=>{const n=d.name.trim();if(!n)return;
+    if(!authUser){chk(await sb.auth.signInAnonymously());authUser=(await sb.auth.getSession()).data.session?.user||null}
+    try{await rpc('join_group',{code:inviteCode()||'',display_name:n})}
+    catch(e){if(/ungültig/.test(e.message||'')){ls.set(CODE_KEY,'');ui.who='nolink'}throw e}
+    await whoAmI();flash('Willkommen, '+n)},
+  extra:async d=>{if(d.end<=d.start)return flash('Ende muss nach Beginn liegen');chk(await T('extra_sessions').insert({day:d.date,start_time:d.start,end_time:d.end,sport:d.sport,loc:d.loc.trim()}));flash('Extra-Termin angelegt')},
+  loc:async(d,sid)=>{await setOvr(sid,{loc:d.loc.trim()});flash('Ort geändert')},
+  addTo:async(d,sid)=>{chk(await T('signups').insert({session_key:sid,member_id:d.mid}));flash(nm(d.mid)+' eingetragen')},
+  exp:async d=>{const a=num(d.amount);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');const rc=await shrink(d.receipt);
+    chk(await T('expenses').insert({day:d.date,amount:a,label:d.label.trim(),category:CATS.includes(d.cat)?d.cat:'Sonstiges',monthly:!!d.monthly,receipt:rc}));
+    flash(d.date>today()&&!d.monthly?'Als geplante Ausgabe gespeichert':'Ausgabe gespeichert')},
+  inc:async d=>{const a=num(d.amount);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');if(d.date>today())return flash('Einnahmen bitte erst am Zahltag eintragen');const rc=await shrink(d.receipt);
+    chk(await T('incomes').insert({day:d.date,amount:a,label:d.label.trim(),receipt:rc}));flash('Einnahme gespeichert')},
+  payAmt:async(d,mid)=>{const a=num(d.amt);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');chk(await T('payments').insert({member_id:mid,amount:a,day:today()}));flash(eur(a)+' gebucht')},
+  rename:async(d,mid)=>{chk(await T('members').update({name:d.name.trim()}).eq('id',mid));flash('Name geändert')},
+  addMember:async d=>{const n=d.name.trim();if(!n)return;chk(await T('members').insert({name:n}));flash(n+' hinzugefügt')},
+  settings:async d=>{const p=num(d.price),fp=num(d.flatPrice),mx=parseInt(d.max,10);
+    if(!(p>=0)||!(fp>=0)||!(mx>0))return flash('Bitte gültige Zahlen eingeben');
+    if(d.flatUntil<d.flatFrom)return flash('„Bis“ liegt vor „ab“');if(d.end<=d.start)return flash('Ende muss nach Beginn liegen');
+    const busyMax=Math.max(0,...Object.keys(S.sign).filter(sid=>{const x=getS(sid);return x&&x.date>=today()}).map(sid=>Math.min(list(sid).length,S.set.max)));
+    if(mx<busyMax)return flash('Es gibt schon Termine mit '+busyMax+' Zusagen – Maximum nicht darunter');
+    chk(await T('settings').update({price:p,flat_price:fp,max_players:mx,flat_from:d.flatFrom,flat_until:d.flatUntil,start_time:d.start,end_time:d.end,loc_mo:d.locMo.trim(),loc_di:d.locDi.trim()}).eq('id',1));flash('Gespeichert')}
+};
+
+/* ---------- Render ---------- */
+const app=document.getElementById('app');
+function render(){let h=ONLINE?onlineBar():demoBar();
+  if(ONLINE&&OV[ui.who])h+=OV[ui.who]();
+  else if(ui.who==='admin')h+=viewAdmin();else if(ui.who==='new')h+=viewJoin();else h+=viewMember(ui.who);
+  if(ui.beleg){const [k,id]=ui.beleg.split(':'),src=(k==='e'?S.exp:S.inc).find(x=>x.id===id)?.receipt;if(src)h+=`<div class="ov" data-a="closeBeleg" role="dialog" aria-label="Beleg"><img src="${esc(src)}" alt="Beleg"></div>`}
+  if(ui.msg)h+=`<div class="toast" role="status">${esc(ui.msg)}</div>`;
+  app.innerHTML=h}
+
+/* ---------- Aktionen ---------- */
+const A={
+  ask:id=>{ui.confirm=id;return 'keep'},
+  reset:()=>{S=seed();ui.sel=null;ui.person=null;flash('Beispieldaten wiederhergestellt')},
+  tab:id=>{ui.tab=id;ui.sel=null},
+  sel:id=>{ui.sel=id||null;scrollTo(0,0)},
+  person:id=>{ui.person=id||null;ui.claimShown=null},
+  join:sid=>{const r=join(sid,ui.who);flash(r==='conf'?'Du bist dabei':'Termin voll – du bist auf der Warteliste')},
+  leave:sid=>{const moved=leave(sid,ui.who);flash('Abgesagt'+(moved.length&&canSeeWait(ui.who)?' – '+moved.map(nm).join(', ')+' rückt nach':''))},
+  here:sid=>{const st=status(sid,ui.who);if(!st){if(conf(sid).length>=S.set.max)return flash('Termin ist voll');join(sid,ui.who)}
+    if(status(sid,ui.who)==='wait')return flash('Du stehst noch auf der Warteliste');setAtt(sid,ui.who,{self:true});flash('Eingecheckt')},
+  unhere:sid=>{setAtt(sid,ui.who,{self:false,ovr:null})},
+  toggleHere:(sid,mid)=>{setAtt(sid,mid,{ovr:!present(sid,mid)})},
+  adminLeave:(sid,mid)=>{if(present(sid,mid))return flash(nm(mid)+' ist als „da“ markiert – erst auf „Da?“ zurücksetzen');const moved=leave(sid,mid);flash(nm(mid)+' entfernt'+(moved.length?' – '+moved.map(nm).join(', ')+' rückt nach':''))},
+  cancel:sid=>{S.ovr[sid]={...S.ovr[sid],cancelled:true};flash('Termin abgesagt')},
+  uncancel:sid=>{S.ovr[sid]={...S.ovr[sid],cancelled:false}},
+  swapSport:sid=>{const s=getS(sid);S.ovr[sid]={...S.ovr[sid],sport:s.sport==='Fußball'?'Volleyball':'Fußball'}},
+  delExtra:sid=>{S.extras=S.extras.filter(x=>x.id!==sid);delete S.sign[sid];delete S.att[sid];delete S.ovr[sid];ui.sel=null;flash('Extra-Termin gelöscht')},
+  paid:mid=>{const L=ledger(mid);if(L.open>0){S.pay.push({id:uid(),mid,amt:L.open,date:today(),note:''});flash(nm(mid)+': '+eur(L.open)+' als bezahlt gebucht')}},
+  undoPay:id=>{S.pay=S.pay.filter(p=>p.id!==id);flash('Zahlung storniert')},
+  beleg:id=>{ui.beleg=id},
+  closeBeleg:()=>{ui.beleg=null},
+  payNow:id=>{const e=S.exp.find(e=>e.id===id);if(e){e.date=today();flash(e.label+' als bezahlt gebucht')}},
+  delInc:id=>{S.inc=S.inc.filter(i=>i.id!==id);flash('Einnahme gelöscht')},
+  csv:()=>{try{const b=new Blob(['\ufeff'+csv()],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='kassenbuch'+(ui.month?'-'+ui.month:'')+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}catch(e){flash('Download nicht möglich – bitte „Als Tabelle kopieren“')}},
+  copyCsv:()=>{try{navigator.clipboard.writeText(tsv()).then(()=>{flash('Tabelle kopiert – in Excel einfügen');render()},()=>{flash('Kopieren nicht möglich');render()})}catch(e){flash('Kopieren nicht möglich')}},
+  pdf:()=>{printBook();try{window.print()}catch(e){flash('Drucken nicht möglich')}},
+  delExp:id=>{S.exp=S.exp.filter(e=>e.id!==id);flash('Ausgabe gelöscht')},
+  stopExp:id=>{const e=S.exp.find(e=>e.id===id);if(e)e.end=today();flash('Wiederholung beendet')},
+  plan:(mid,x)=>{const m=member(mid);m.flat=x==='flat'?{amount:S.set.flatPrice,from:S.set.flatFrom,until:S.set.flatUntil}:null},
+  helper:mid=>{const m=member(mid);m.helper=!m.helper;flash(m.name+(m.helper?' darf die Warteliste sehen':' sieht die Warteliste nicht mehr'))},
+  archive:mid=>{member(mid).active=false;Object.keys(S.sign).forEach(sid=>{const x=getS(sid);if(x&&x.date>=today())S.sign[sid]=list(sid).filter(x=>x!==mid)});ui.person=null;flash('Person entfernt')},
+  copy:txt=>{try{navigator.clipboard.writeText(txt).then(()=>{flash('Link kopiert');render()},()=>{flash('Kopieren nicht möglich – bitte Link markieren');render()})}catch(e){flash('Kopieren nicht möglich')}}
+};
+const F={
+  join:d=>{const n=d.name.trim();if(!n)return;const ex=S.members.find(m=>m.active&&m.name.toLowerCase()===n.toLowerCase());
+    if(ex)return flash('„'+ex.name+'“ gibt es schon – bitte z. B. mit Nachnamen-Initial eintragen');
+    const m={id:'m'+uid(),name:n,flat:null,active:true};S.members.push(m);ui.who=m.id;flash('Willkommen, '+n)},
+  extra:d=>{if(d.end<=d.start)return flash('Ende muss nach Beginn liegen');const id='x'+uid();S.extras.push({id,date:d.date,start:d.start,end:d.end,sport:d.sport,loc:d.loc.trim()});flash('Extra-Termin angelegt')},
+  loc:(d,sid)=>{S.ovr[sid]={...S.ovr[sid],loc:d.loc.trim()};flash('Ort geändert')},
+  addTo:(d,sid)=>{const r=join(sid,d.mid);flash(nm(d.mid)+(r==='conf'?' zugesagt':' auf Warteliste'))},
+  exp:async d=>{const a=num(d.amount);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');const rc=await shrink(d.receipt);
+    S.exp.push({id:uid(),label:d.label.trim(),cat:CATS.includes(d.cat)?d.cat:'Sonstiges',amount:a,date:d.date,monthly:!!d.monthly,end:null,receipt:rc});flash(d.date>today()&&!d.monthly?'Als geplante Ausgabe gespeichert':'Ausgabe gespeichert')},
+  inc:async d=>{const a=num(d.amount);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');if(d.date>today())return flash('Einnahmen bitte erst am Zahltag eintragen');const rc=await shrink(d.receipt);
+    S.inc.push({id:uid(),label:d.label.trim(),cat:'Sonstige Einnahme',amount:a,date:d.date,receipt:rc});flash('Einnahme gespeichert')},
+  payAmt:(d,mid)=>{const a=num(d.amt);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');S.pay.push({id:uid(),mid,amt:a,date:today(),note:''});flash(eur(a)+' gebucht')},
+  rename:(d,mid)=>{member(mid).name=d.name.trim();flash('Name geändert')},
+  addMember:d=>{const n=d.name.trim();if(!n)return;S.members.push({id:'m'+uid(),name:n,flat:null,active:true});flash(n+' hinzugefügt')},
+  settings:d=>{const p=num(d.price),fp=num(d.flatPrice),mx=parseInt(d.max,10);
+    if(!(p>=0)||!(fp>=0)||!(mx>0))return flash('Bitte gültige Zahlen eingeben');
+    if(d.flatUntil<d.flatFrom)return flash('„Bis“ liegt vor „ab“');
+    if(d.end<=d.start)return flash('Ende muss nach Beginn liegen');
+    const busy=Math.max(0,...Object.keys(S.sign).filter(sid=>{const x=getS(sid);return x&&x.date>=today()}).map(sid=>Math.min(list(sid).length,S.set.max)));
+    if(mx<busy)return flash('Es gibt schon Termine mit '+busy+' Zusagen – Maximum nicht darunter');
+    Object.assign(S.set,{price:p,flatPrice:fp,max:mx,flatFrom:d.flatFrom,flatUntil:d.flatUntil,start:d.start,end:d.end,locMo:d.locMo.trim(),locDi:d.locDi.trim()});flash('Gespeichert')}
+};
+let busy=false;
+async function runRemote(fn,args){if(busy)return;busy=true;app.classList.add('busy');
+  try{await fn(...args);await reload()}catch(err){flash(errText(err))}finally{busy=false;app.classList.remove('busy');ui.confirm=null;render()}}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;if(b.tagName==='A')e.preventDefault();
+  const a=b.dataset.a,args=[b.dataset.id,b.dataset.x];
+  if(ONLINE&&R[a]){ui.confirm=null;return runRemote(R[a],args)}
+  const r=A[a]?.(...args);if(r!=='keep')ui.confirm=null;save();render()});
+document.addEventListener('submit',e=>{e.preventDefault();const f=e.target;const d=Object.fromEntries(new FormData(f));
+  if(ONLINE&&RF[f.dataset.f])return runRemote(RF[f.dataset.f],[d,f.dataset.id]);
+  Promise.resolve(F[f.dataset.f]?.(d,f.dataset.id)).then(()=>{ui.confirm=null;save();render()})});
+document.addEventListener('change',e=>{const c=e.target.dataset.c;if(!c)return;
+  if(c==='who'){ui.who=e.target.value;ui.sel=null;ui.person=null}
+  if(c==='sim'&&e.target.value)ui.sim=e.target.value;
+  if(c==='month')ui.month=e.target.value||null;
+  ui.confirm=null;save();render()});
+
+/* Einladungslink ?e=CODE: ohne gespeicherte Person direkt zur Namenseingabe */
+if(ONLINE)boot();else{
+try{const q=new URLSearchParams(location.search).get('e');if(q&&q===S.set.code&&(ui.who==='admin'||!member(ui.who)))ui.who='new'}catch(e){}
+render();}
+try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
+}
+</script>
+</body>
+</html>
