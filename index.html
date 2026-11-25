@@ -134,7 +134,7 @@ function seed(){
   const names=['Ali','Ben','Chris','Daniel','Emre','Felix','Hakan','Jonas','Kai','Lukas','Marco','Niko','Omar','Paul','Robin','Sven','Tim','Yusuf','Zoran','Leon'];
   const members=names.map((n,i)=>({id:'m'+i,name:n,flat:null,active:true,helper:i===7}));
   const s={v:3,
-    set:{price:2,flatPrice:30,flatFrom:'2026-11-30',flatUntil:'2026-12-31',max:18,start:'20:00',end:'22:00',anchor:'2026-11-30',locMo:'Isengarten-Halle',locDi:'Wiederhol-Halle',code:uid()},
+    set:{price:2,flatPrice:30,flatFrom:'2026-11-30',flatUntil:'2026-12-31',max:18,start:'20:00',end:'22:00',anchor:'2026-11-30',locMo:'Isengarten-Halle',locDi:'Wiedenhof-Halle',code:uid()},
     members,ovr:{},extras:[],sign:{},att:{},pay:[],exp:[],inc:[]};
   members[16].flat={amount:30,from:'2026-11-30',until:'2026-12-31'}; // Tim zahlt pauschal
   members.push({id:'k1',name:'Lina',flat:null,active:true,guardian:'m1'}); // Ben bringt Lina mit (ohne Handy)
@@ -282,6 +282,7 @@ function viewMember(mid){const m=member(mid);if(!m)return viewJoin();
   const Ls=peopleAll(mid).map(id=>({id,L:ledger(id)})).filter(x=>x.id===mid||member(x.id).active||x.L.open||x.L.items.length),open=Math.round(Ls.reduce((a,x)=>a+x.L.open,0)*100)/100;
   h+=`<div class="h"><span>Mein Geld</span><span>nur für dich</span></div>
   <div class="owe${open<=0?' ok':''}"><span>${open<0?'Guthaben':'Offener Betrag'}${ks.length?' (mit Mitkommenden)':''}<small class="mut" style="display:block;font-size:13px">${m.flat?'Pauschale '+eur(m.flat.amount)+' bis '+fdy(m.flat.until):eur(S.set.price)+' pro Besuch, nur wenn jemand da war'}</small></span><b>${eur(Math.abs(open))}</b></div>`;
+  h+=`<p class="empty sm">Bezahlt wird nicht in der App, sondern direkt beim Verwalter. Er hakt deine Zahlung dann hier ab.</p>`;
   if(Ls.length>1)h+=`<div class="cats" style="margin-bottom:8px">${Ls.map(x=>`<span>${esc(x.id===mid?'Ich':nm(x.id))}</span><span>${eur(x.L.open)}</span>`).join('')}</div>`;
   const hist=Ls.flatMap(({id,L})=>{const pre=Ls.length>1?(id===mid?'Ich':nm(id))+': ':'';
     return [...L.items.map(i=>({...i,label:pre+i.label,k:'c'})),...L.paid.map(p=>({date:p.date,label:pre+'Bezahlt',amt:p.amt,k:'p'}))]}).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);

@@ -29,7 +29,7 @@ create table public.settings (
   end_time time not null default '22:00',
   anchor date not null default '2026-11-30',          -- Montag mit Fußball
   loc_mo text not null default 'Isengarten-Halle',
-  loc_di text not null default 'Wiederhol-Halle',
+  loc_di text not null default 'Wiedenhof-Halle',
   invite_code text not null default encode(gen_random_bytes(9), 'hex')
 );
 insert into public.settings default values;
