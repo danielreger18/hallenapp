@@ -133,12 +133,13 @@ const realToday=()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europ
 function seed(){
   const names=['Ali','Ben','Chris','Daniel','Emre','Felix','Hakan','Jonas','Kai','Lukas','Marco','Niko','Omar','Paul','Robin','Sven','Tim','Yusuf','Zoran','Leon'];
   const members=names.map((n,i)=>({id:'m'+i,name:n,flat:null,active:true,helper:i===7}));
-  const s={v:2,
+  const s={v:3,
     set:{price:2,flatPrice:30,flatFrom:'2026-11-30',flatUntil:'2026-12-31',max:18,start:'20:00',end:'22:00',anchor:'2026-11-30',locMo:'Isengarten-Halle',locDi:'Wiederhol-Halle',code:uid()},
     members,ovr:{},extras:[],sign:{},att:{},pay:[],exp:[],inc:[]};
   members[16].flat={amount:30,from:'2026-11-30',until:'2026-12-31'}; // Tim zahlt pauschal
+  members.push({id:'k1',name:'Lina',flat:null,active:true,guardian:'m1'}); // Ben bringt Lina mit (ohne Handy)
   s.sign['2026-11-30']=names.slice(0,19).map((_,i)=>'m'+i);       // 19 Zusagen: 18 + 1 Warteliste
-  s.sign['2026-12-01']=['m0','m2','m4','m7','m9','m10','m13','m19'];
+  s.sign['2026-12-01']=['m0','m1','k1','m2','m4','m7','m9','m10','m13','m19'];
   s.sign['2026-12-07']=['m1','m3','m7','m11','m12'];
   s.att['2026-11-30']={};
   ['m0','m1','m2','m4','m5','m9','m16'].forEach(id=>s.att['2026-11-30'][id]={self:true,ovr:null,price:2});
@@ -148,7 +149,7 @@ function seed(){
   return s;
 }
 let S; if(ONLINE)S={v:2,set:{price:2,flatPrice:30,flatFrom:'2026-11-30',flatUntil:'2026-12-31',max:18,start:'20:00',end:'22:00',anchor:'2026-11-30',locMo:'',locDi:'',code:''},members:[],ovr:{},extras:[],sign:{},att:{},pay:[],exp:[],inc:[]};
-else{try{S=JSON.parse(ls.get(KEY))}catch(e){} if(!S||S.v!==2){S=seed();ls.set(KEY,JSON.stringify(S))}}
+else{try{S=JSON.parse(ls.get(KEY))}catch(e){} if(!S||S.v!==3){S=seed();ls.set(KEY,JSON.stringify(S))}}
 if(!S.inc)S.inc=[];
 let ui; try{ui=JSON.parse(ls.get(KEY+'-ui'))}catch(e){} ui=Object.assign({who:'admin',tab:'termine',sel:null,sim:'2026-11-30',confirm:null,msg:null},ui||{});
 if(ONLINE){ui.who='loading';ui.sim=null}
@@ -220,13 +221,13 @@ const sure=(key,label,act,id,x='',cls='mk red')=>ui.confirm===key
   ?`<button class="${cls} on" data-a="${act}" data-id="${esc(id)}" data-x="${esc(x)}">Sicher?</button>`
   :`<button class="${cls}" data-a="ask" data-id="${esc(key)}">${label}</button>`;
 const nameGrid=(sid,me)=>{const c=conf(sid);if(!c.length)return '<p class="empty">Noch keine Zusagen.</p>';
-  return `<div class="grid">${c.map(id=>`<div class="${present(sid,id)?'d':'c'}${id===me?' me':''}"><i></i>${esc(nm(id))}</div>`).join('')}</div>
+  return `<div class="grid">${c.map(id=>`<div class="${present(sid,id)?'d':'c'}${id===me?' me':''}"><i></i>${esc(dn(id))}</div>`).join('')}</div>
   <div class="leg"><span><i class="dot c"></i>zugesagt</span><span><i class="dot d"></i>da</span></div>`};
-const waitList=sid=>{const w=wait(sid);return w.length?`<div class="h"><span>Warteliste</span><span>${w.length}</span></div>`+w.map((id,i)=>`<div class="row"><span class="t">${i+1}. ${esc(nm(id))}</span></div>`).join(''):''};
+const waitList=sid=>{const w=wait(sid);return w.length?`<div class="h"><span>Warteliste</span><span>${w.length}</span></div>`+w.map((id,i)=>`<div class="row"><span class="t">${i+1}. ${esc(dn(id))}</span></div>`).join(''):''};
 const sessLine=s=>`${fd(s.date)} · ${esc(s.start)}–${esc(s.end)} Uhr`;
 
 function demoBar(){const opts=[`<option value="admin"${ui.who==='admin'?' selected':''}>Verwalter (Onkel)</option>`,
-  ...S.members.filter(m=>m.active).map(m=>`<option value="${esc(m.id)}"${ui.who===m.id?' selected':''}>${esc(m.name)}</option>`),
+  ...S.members.filter(m=>m.active&&!m.guardian).map(m=>`<option value="${esc(m.id)}"${ui.who===m.id?' selected':''}>${esc(m.name)}</option>`),
   `<option value="new"${ui.who==='new'?' selected':''}>Neu über Einladungslink</option>`].join('');
   return `<div class="demo"><b>Demo</b><label class="sm" style="display:flex;gap:6px;align-items:center">Ansicht <select data-c="who">${opts}</select></label>
   <label class="sm" style="display:flex;gap:6px;align-items:center">Heute ist <input type="date" data-c="sim" value="${esc(ui.sim||realToday())}"></label>
@@ -237,36 +238,53 @@ function viewJoin(){return `<div class="join"><div class="os mut">Einladung</div
   <p class="mut">20–22 Uhr · Fußball und Volleyball im Wechsel. Gib deinen Namen ein, dann kannst du zusagen.</p>
   <form class="f" data-f="join" style="margin:18px 0 0"><label>Dein Name<input name="name" required maxlength="30" autocomplete="given-name"></label><button class="on">Mitmachen</button></form>${ONLINE?'<p style="margin-top:22px"><button class="mk gr" data-a="toClaim">Ich war schon dabei (Geräte-Code)</button></p>':''}</div>`}
 
+const kids=mid=>S.members.filter(m=>m.active&&m.guardian===mid);
+const kidsAll=mid=>S.members.filter(m=>m.guardian===mid);
+const people=mid=>[mid,...kids(mid).map(k=>k.id)];
+const peopleAll=mid=>[mid,...kidsAll(mid).map(k=>k.id)];
+const payer=mid=>member(mid)?.guardian||mid;
+const dn=id=>{const m=member(id);return m&&m.guardian?m.name+' ('+nm(m.guardian)+')':nm(id)};
+/* Knopf "kommt" für eine Person (ich oder Mitkommende) */
+function comeBtn(s,who,self,big){const st=status(s.id,who),c=conf(s.id).length,here=present(s.id,who),x=self?'':esc(who);
+  const cls=big?'':'mk ';
+  if(st==='conf')return here?`<button class="${cls}" disabled>${self?'Zugesagt':'Kommt'} ✓</button>`:`<button class="${cls}on" data-a="leave" data-id="${esc(s.id)}" data-x="${x}">${big?'Absagen':self?'Komme ✓':'Kommt ✓'}</button>`;
+  if(st==='wait')return `<button class="${cls}${big?'':'gr'}" data-a="leave" data-id="${esc(s.id)}" data-x="${x}">Warteliste ${list(s.id).indexOf(who)-S.set.max+1}${big?' · raus':''}</button>`;
+  return `<button class="${cls}${big?'on':''}" data-a="join" data-id="${esc(s.id)}" data-x="${x}">${c>=S.set.max?'Warteliste':self?'Ich komme':'Kommt mit'}</button>`}
+function hereBtn(s,who,self,big){const st=status(s.id,who),c=conf(s.id).length,x=self?'':esc(who),cls=big?'':'mk ';
+  if(present(s.id,who))return `<button class="${cls}${big?'go':'on'}" data-a="unhere" data-id="${esc(s.id)}" data-x="${x}">${self?'Ich bin da':'Da'} ✓</button>`;
+  return `<button class="${cls}" data-a="here" data-id="${esc(s.id)}" data-x="${x}" ${s.date===today()&&st!=='wait'&&(st==='conf'||c<S.set.max)?'':'disabled'}>${self?'Ich bin da':'Da'}</button>`}
 function viewMember(mid){const m=member(mid);if(!m)return viewJoin();
   const t=today(),up=sessions(t,add(t,27));const focus=up.find(s=>!s.cancelled)||up[0];
-  const sw=canSeeWait(mid);
+  const sw=canSeeWait(mid),ks=kids(mid);
   let h=`<div class="top"><div><h1>${focus?esc(focus.sport):'Keine Termine'}</h1>${focus?`<div class="mut sm">${focus.date===t?'Heute, ':''}${sessLine(focus)}<br>${esc(focus.loc)}</div>`:''}</div><div class="mut sm">${esc(m.name)}${m.helper?'<br>Helfer':''}</div></div>`;
-  if(focus){const sid=focus.id,st=status(sid,mid),isToday=focus.date===t,here=present(sid,mid),c=conf(sid).length;
+  if(focus){const sid=focus.id,st=status(sid,mid),isToday=focus.date===t,c=conf(sid).length;
     h+=focus.cancelled?`<div class="score"><div class="os">Abgesagt</div><div class="n">–</div><small class="mut">Dieser Termin fällt aus.</small></div>`
      :isToday?`<div class="score"><div class="os">Heute in der Halle</div><div class="n">${presentCount(sid)}</div><small class="mut">von ${c} Zusagen · max. ${S.set.max}</small></div>`
      :`<div class="score"><div class="os">Zusagen</div><div class="n">${c}<span>/${S.set.max}</span></div><small class="mut">${sw&&wait(sid).length?wait(sid).length+' auf der Warteliste':c>=S.set.max?'voll':(S.set.max-c)+' Plätze frei'}</small></div>`;
     if(!focus.cancelled){
-      const kBtn=st==='conf'?(here?`<button disabled>Zugesagt</button>`:`<button class="on" data-a="leave" data-id="${esc(sid)}">Absagen</button>`)
-        :st==='wait'?`<button data-a="leave" data-id="${esc(sid)}">Warteliste ${list(sid).indexOf(mid)-S.set.max+1} · raus</button>`
-        :`<button class="on" data-a="join" data-id="${esc(sid)}">${c>=S.set.max?'Auf Warteliste':'Ich komme'}</button>`;
-      const dBtn=here?`<button class="go" data-a="unhere" data-id="${esc(sid)}">Ich bin da ✓</button>`
-        :`<button data-a="here" data-id="${esc(sid)}" ${isToday&&st!=='wait'&&(st==='conf'||c<S.set.max)?'':'disabled'}>Ich bin da</button>`;
-      h+=`<div class="ctas">${kBtn}${dBtn}</div>`;
+      h+=`<div class="ctas">${comeBtn(focus,mid,true,true)}${hereBtn(focus,mid,true,true)}</div>`;
+      if(ks.length)h+=`<div class="h"><span>Mitkommende</span></div>`+ks.map(k=>`<div class="row"><span class="t">${esc(k.name)}</span>${comeBtn(focus,k.id,false)}${hereBtn(focus,k.id,false)}</div>`).join('');
       if(!isToday)h+=`<p class="empty sm" style="text-align:center">„Ich bin da“ geht am Termintag.</p>`;
-      if(st==='wait')h+=`<div class="note">Du stehst auf der Warteliste. Sagt jemand ab, rückst du automatisch nach.</div>`;
+      if(people(mid).some(id=>status(sid,id)==='wait'))h+=`<div class="note">Auf der Warteliste: Sagt jemand ab, rückt der Erste automatisch nach.</div>`;
     }
     h+=`<div class="h"><span>${isToday?'Wer ist da':'Wer kommt'}</span><span>${c}/${S.set.max}</span></div>`+nameGrid(sid,mid)+(sw?waitList(sid):'');
   }
   const rest=up.filter(s=>s!==focus).slice(0,6);
-  h+=`<div class="h"><span>Nächste Termine</span></div>`+(rest.length?rest.map(s=>{const st=status(s.id,mid),c=conf(s.id).length;
-    const b=s.cancelled?`<span class="pill r">Abgesagt</span>`:st==='conf'?`<button class="mk on" data-a="leave" data-id="${esc(s.id)}">Komme ✓</button>`
-      :st==='wait'?`<button class="mk gr" data-a="leave" data-id="${esc(s.id)}">Warteliste ${list(s.id).indexOf(mid)-S.set.max+1}</button>`
-      :`<button class="mk" data-a="join" data-id="${esc(s.id)}">${c>=S.set.max?'Warteliste':'Ich komme'}</button>`;
-    return `<div class="row"><span class="t${s.cancelled?' x':''}">${fd(s.date)} · ${esc(s.sport)}<small>${esc(s.loc)} · ${c}/${S.set.max}${sw&&wait(s.id).length?' · '+wait(s.id).length+' warten':''}</small></span>${b}</div>`}).join(''):'<p class="empty">Keine weiteren Termine.</p>');
-  const L=ledger(mid);
+  h+=`<div class="h"><span>Nächste Termine</span></div>`+(rest.length?rest.map(s=>{const c=conf(s.id).length;
+    const b=s.cancelled?`<span class="pill r">Abgesagt</span>`:comeBtn(s,mid,true,false);
+    const kb=!s.cancelled&&ks.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 12px 6px;padding:0 4px 8px;border-bottom:1px solid var(--line)">${ks.map(k=>{const st=status(s.id,k.id);
+      return `<button class="mk${st==='conf'?' on':st==='wait'?' gr':''}" style="min-height:38px" data-a="${st?'leave':'join'}" data-id="${esc(s.id)}" data-x="${esc(k.id)}">${esc(k.name)}${st==='conf'?' ✓':st==='wait'?' · W'+(list(s.id).indexOf(k.id)-S.set.max+1):' +'}</button>`}).join('')}</div>`:'';
+    return `<div class="row"${kb?' style="border-bottom:0"':''}><span class="t${s.cancelled?' x':''}">${fd(s.date)} · ${esc(s.sport)}<small>${esc(s.loc)} · ${c}/${S.set.max}${sw&&wait(s.id).length?' · '+wait(s.id).length+' warten':''}</small></span>${b}</div>${kb}`}).join(''):'<p class="empty">Keine weiteren Termine.</p>');
+  h+=`<div class="h"><span>Meine Mitkommenden</span><span>${ks.length}</span></div>`+
+    ks.map(k=>`<div class="row"><span class="t">${esc(k.name)}<small>${k.flat?'Pauschale':eur(S.set.price)+' pro Besuch'}</small></span>${sure('rk'+k.id,'Entfernen','removeKid',k.id,'','mk gr')}</div>`).join('')+
+    `<form class="f" data-f="addKid" style="margin-top:8px"><label>Person ohne Handy, z. B. dein Kind<div style="display:flex;gap:8px"><input name="name" required maxlength="30" placeholder="Name"><button class="mk" style="min-height:46px">Dazu</button></div></label></form>
+    <p class="empty sm">Jede Person belegt einen eigenen Platz und kostet wie alle anderen. Die Beträge siehst du hier gesammelt.</p>`;
+  const Ls=peopleAll(mid).map(id=>({id,L:ledger(id)})).filter(x=>x.id===mid||member(x.id).active||x.L.open||x.L.items.length),open=Math.round(Ls.reduce((a,x)=>a+x.L.open,0)*100)/100;
   h+=`<div class="h"><span>Mein Geld</span><span>nur für dich</span></div>
-  <div class="owe${L.open<=0?' ok':''}"><span>${L.open<0?'Mein Guthaben':'Mein offener Betrag'}<small class="mut" style="display:block;font-size:13px">${m.flat?'Pauschale '+eur(m.flat.amount)+' bis '+fdy(m.flat.until):eur(S.set.price)+' pro Besuch, nur wenn du da warst'}</small></span><b>${eur(Math.abs(L.open))}</b></div>`;
-  const hist=[...L.items.map(i=>({...i,k:'c'})),...L.paid.map(p=>({date:p.date,label:'Bezahlt',amt:p.amt,k:'p'}))].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  <div class="owe${open<=0?' ok':''}"><span>${open<0?'Guthaben':'Offener Betrag'}${ks.length?' (mit Mitkommenden)':''}<small class="mut" style="display:block;font-size:13px">${m.flat?'Pauschale '+eur(m.flat.amount)+' bis '+fdy(m.flat.until):eur(S.set.price)+' pro Besuch, nur wenn jemand da war'}</small></span><b>${eur(Math.abs(open))}</b></div>`;
+  if(Ls.length>1)h+=`<div class="cats" style="margin-bottom:8px">${Ls.map(x=>`<span>${esc(x.id===mid?'Ich':nm(x.id))}</span><span>${eur(x.L.open)}</span>`).join('')}</div>`;
+  const hist=Ls.flatMap(({id,L})=>{const pre=Ls.length>1?(id===mid?'Ich':nm(id))+': ':'';
+    return [...L.items.map(i=>({...i,label:pre+i.label,k:'c'})),...L.paid.map(p=>({date:p.date,label:pre+'Bezahlt',amt:p.amt,k:'p'}))]}).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
   h+=hist.map(i=>`<div class="row"><span class="t">${esc(i.label)}<small>${fdy(i.date)}</small></span><span class="amt"${i.k==='p'?' style="color:var(--grn)"':''}>${i.k==='p'?'+':''}${eur(i.amt)}</span></div>`).join('');
   return h}
 
@@ -298,7 +316,7 @@ function adminSession(s){const sid=s.id,t=today(),c=conf(sid),w=wait(sid);
   const others=S.members.filter(m=>m.active&&!list(sid).includes(m.id)&&!present(sid,m.id));
   const extraPresent=Object.keys(S.att[sid]||{}).filter(id=>!list(sid).includes(id)&&present(sid,id));
   const prow=(id,lbl)=>{const p=present(sid,id),a=att(sid,id);
-    return `<div class="row"><span class="t">${lbl}${esc(nm(id))}<small>${a&&a.ovr!=null?'vom Verwalter '+(a.ovr?'bestätigt':'ausgetragen'):a&&a.self?'selbst eingecheckt':'noch nicht da'}</small></span>
+    return `<div class="row"><span class="t">${lbl}${esc(dn(id))}<small>${a&&a.ovr!=null?'vom Verwalter '+(a.ovr?'bestätigt':'ausgetragen'):a&&a.self?'selbst eingecheckt':'noch nicht da'}</small></span>
     <button class="mk${p?' on':''}" data-a="toggleHere" data-id="${esc(sid)}" data-x="${esc(id)}">${p?'Da ✓':'Da?'}</button>
     ${ui.confirm==='rm'+id?`<button class="mk red on" data-a="adminLeave" data-id="${esc(sid)}" data-x="${esc(id)}">Sicher?</button>`:`<button class="mk red" data-a="ask" data-id="rm${esc(id)}" aria-label="Von Liste nehmen">✕</button>`}</div>`};
   return `<div class="top"><div><button class="mk gr" data-a="sel" data-id="">← Zurück</button></div><span class="mut sm">${s.extra?'Extra-Termin':'Regeltermin'}</span></div>
@@ -311,13 +329,14 @@ function adminSession(s){const sid=s.id,t=today(),c=conf(sid),w=wait(sid);
   ${c.map(id=>prow(id,'')).join('')||'<p class="empty">Noch keine Zusagen.</p>'}
   ${w.length?`<div class="h"><span>Warteliste</span><span>${w.length}</span></div>`+w.map((id,i)=>prow(id,(i+1)+'. ')).join(''):''}
   ${extraPresent.length?`<div class="h"><span>Ohne Zusage da</span></div>`+extraPresent.map(id=>prow(id,'')).join(''):''}
-  ${others.length?`<div class="h"><span>Person hinzufügen</span></div><form class="f" data-f="addTo" data-id="${esc(sid)}"><div style="display:flex;gap:8px"><select name="mid">${others.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select><button class="mk" style="min-height:46px">Dazu</button></div></form>`:''}
+  ${others.length?`<div class="h"><span>Person hinzufügen</span></div><form class="f" data-f="addTo" data-id="${esc(sid)}"><div style="display:flex;gap:8px"><select name="mid">${others.map(m=>`<option value="${esc(m.id)}">${esc(dn(m.id))}</option>`).join('')}</select><button class="mk" style="min-height:46px">Dazu</button></div></form>`:''}
   ${s.extra?`<div class="ctas one" style="margin-top:20px">${sure('del'+sid,'Extra-Termin löschen','delExtra',sid,'','')}</div>`:''}
   ${s.date>t?'<div class="note">Anwesenheit kann vorab schon gesetzt werden. Abgerechnet wird nur, wer als „da“ markiert ist.</div>':''}`}
 
 function adminKasse(){const K=kasse(),t=today();const tot=K.inc+K.out||1;
-  const open=S.members.map(m=>({m,L:ledger(m.id)})).filter(x=>x.L.open>0).sort((a,b)=>b.L.open-a.L.open);
-  const openSum=open.reduce((s,x)=>s+x.L.open,0);
+  const groups={};S.members.forEach(m=>{const L=ledger(m.id);if(L.open>0){const g=payer(m.id);(groups[g]=groups[g]||[]).push({m,L})}});
+  const open=Object.entries(groups).map(([g,xs])=>({g,xs,sum:Math.round(xs.reduce((a,x)=>a+x.L.open,0)*100)/100})).sort((a,b)=>b.sum-a.sum);
+  const openSum=open.reduce((s,x)=>s+x.sum,0);
   const P=planned(),pSum=sum(P),prog=Math.round((K.bal+openSum-pSum)*100)/100,last=P.length?P[P.length-1].date:null;
   const exps=S.exp.map(e=>({e,o:occ(e,t)})).sort((a,b)=>b.e.date.localeCompare(a.e.date));
   return `<div class="top"><h1>Kasse</h1><span class="mut sm">nur für dich sichtbar</span></div>
@@ -331,8 +350,9 @@ function adminKasse(){const K=kasse(),t=today();const tot=K.inc+K.out||1;
    <small class="mut" style="display:block;margin-top:6px">Annahme: Alle offenen Beträge werden noch bezahlt. Künftige Besuche sind noch nicht eingerechnet.</small></div>`
    :`<div class="note">Tipp: Trag die Hallenmiete mit dem Zahltag (z. B. ${fdy(S.set.flatUntil)}) als Ausgabe ein. Dann zeigt die Kasse, ob das Geld bis dahin reicht.</div>`}
   <div class="h"><span>Offene Zahlungen</span><span>${eur(openSum)}</span></div>
-  ${open.map(({m,L})=>{const n=L.items.filter(i=>i.label.startsWith('Besuch')).length;
-    return `<div class="row"><span class="t">${esc(m.name)}<small>${m.flat?'Pauschale':''}${m.flat&&n?' + ':''}${n?n+' Besuch'+(n>1?'e':''):''}</small></span><span class="amt">${eur(L.open)}</span><button class="mk" data-a="paid" data-id="${esc(m.id)}">Bezahlt</button></div>`}).join('')||'<p class="empty">Alle haben bezahlt.</p>'}
+  ${open.map(({g,xs,sum})=>{const desc=xs.map(({m,L})=>{const n=L.items.filter(i=>i.label.startsWith('Besuch')).length;
+      return (m.id===g?'':m.name+': ')+(m.flat?'Pauschale':'')+(m.flat&&n?' + ':'')+(n?n+' Besuch'+(n>1?'e':''):'')}).join(' · ');
+    return `<div class="row"><span class="t">${esc(nm(g))}${xs.some(x=>x.m.id!==g)?'<span class="pill">mit Mitkommenden</span>':''}<small>${esc(desc)}</small></span><span class="amt">${eur(sum)}</span><button class="mk" data-a="paidGroup" data-id="${esc(g)}">Bezahlt</button></div>`}).join('')||'<p class="empty">Alle haben bezahlt.</p>'}
   <div class="h"><span>Ausgabe eintragen</span></div>
   <form class="f" data-f="exp"><div class="two"><label>Betrag in €<input name="amount" inputmode="decimal" placeholder="z. B. 400" required></label><label>Datum (Zahltag)<input type="date" name="date" value="${esc(t)}" required></label></div>
   <div class="two"><label>Kategorie<select name="cat">${CATS.map(c=>`<option>${c}</option>`).join('')}</select></label><label>Wofür<input name="label" placeholder="z. B. Hallenmiete Dez." required maxlength="60"></label></div>
@@ -390,7 +410,8 @@ function shrink(file){return new Promise(res=>{if(!file||!file.size||!/^image\//
   img.onerror=()=>{URL.revokeObjectURL(url);res(null)};img.src=url})}
 
 function adminLeute(){const link=!S.set.code?'(Code fehlt – bitte „Neuer Link“ tippen)':location.origin&&location.origin!=='null'?location.origin+location.pathname+'?e='+S.set.code:'(Link entsteht, sobald die App online ist)';
-  const ms=S.members.filter(m=>m.active).map(m=>({m,L:ledger(m.id)})).sort((a,b)=>a.m.name.localeCompare(b.m.name,'de'));
+  const adults=S.members.filter(m=>m.active&&!m.guardian).sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  const ms=adults.flatMap(a=>[a,...kids(a.id)]).map(m=>({m,L:ledger(m.id)}));
   const sel=ui.person&&member(ui.person);
   let h=`<div class="top"><h1>Leute</h1><span class="mut sm">${ms.length} aktiv</span></div>
   <div class="note">Einladungslink für die Gruppe:<br><span style="color:var(--ink);word-break:break-all">${esc(link)}</span></div>
@@ -401,13 +422,15 @@ function adminLeute(){const link=!S.set.code?'(Code fehlt – bitte „Neuer Lin
     <div class="row"><span class="t">Tarif<small>${sel.flat?'Pauschale '+eur(sel.flat.amount)+' ('+fdy(sel.flat.from)+'–'+fdy(sel.flat.until)+')':eur(S.set.price)+' pro Besuch'}</small></span>
       <button class="mk${sel.flat?'':' on'}" data-a="plan" data-id="${esc(sel.id)}" data-x="visit">${eur(S.set.price)}</button><button class="mk${sel.flat?' on':''}" data-a="plan" data-id="${esc(sel.id)}" data-x="flat">Pauschale</button></div>
     <div class="row"><span class="t">Offen<small>Forderungen ${eur(L.due)} · bezahlt ${eur(L.got)}</small></span><span class="amt">${eur(L.open)}</span></div>
-    <div class="row"><span class="t">Darf Warteliste sehen<small>Helfer sehen die Warteliste aller Termine. Wartende sehen sonst nur ihren eigenen Platz.</small></span><button class="mk${sel.helper?' on':''}" data-a="helper" data-id="${esc(sel.id)}">${sel.helper?'Ja ✓':'Nein'}</button></div>
+    ${sel.guardian?`<div class="note">Kommt mit ${esc(nm(sel.guardian))}. ${esc(nm(sel.guardian))} sagt für diese Person zu und sieht ihre Beträge.</div>`:''}
+    <div class="row"${sel.guardian?' hidden':''}><span class="t">Darf Warteliste sehen<small>Helfer sehen die Warteliste aller Termine. Wartende sehen sonst nur ihren eigenen Platz.</small></span><button class="mk${sel.helper?' on':''}" data-a="helper" data-id="${esc(sel.id)}">${sel.helper?'Ja ✓':'Nein'}</button></div>
     <form class="f" data-f="payAmt" data-id="${esc(sel.id)}" style="margin-top:8px"><label>Zahlung erfassen (Betrag in €)<div style="display:flex;gap:8px"><input name="amt" inputmode="decimal" required placeholder="${L.open>0?String(L.open).replace('.',','):'z. B. 10'}"><button class="mk" style="min-height:46px">Buchen</button></div></label></form>
     <form class="f" data-f="rename" data-id="${esc(sel.id)}" style="margin-top:8px"><label>Name ändern<div style="display:flex;gap:8px"><input name="name" value="${esc(sel.name)}" required maxlength="30"><button class="mk" style="min-height:46px">OK</button></div></label></form>
-    ${ONLINE?`<div class="row"><span class="t">Geräte-Code<small>Für neues Handy/Browser oder wenn du die Person selbst angelegt hast. Trennt das bisherige Gerät.</small></span>${ui.claimShown&&ui.claimShown.mid===sel.id?`<span class="amt" style="color:var(--yel);user-select:all">${esc(ui.claimShown.c)}</span>`:sure('cc'+sel.id,'Erstellen','claimCode',sel.id,'','mk')}</div>`:''}
+    ${ONLINE&&!sel.guardian?`<div class="row"><span class="t">Geräte-Code<small>Für neues Handy/Browser oder wenn du die Person selbst angelegt hast. Trennt das bisherige Gerät.</small></span>${ui.claimShown&&ui.claimShown.mid===sel.id?`<span class="amt" style="color:var(--yel);user-select:all">${esc(ui.claimShown.c)}</span>`:sure('cc'+sel.id,'Erstellen','claimCode',sel.id,'','mk')}</div>`:''}
     <div class="ctas one">${sure('ar'+sel.id,'Person entfernen (Verlauf bleibt)','archive',sel.id,'','')}</div>`}
-  h+=`<div class="h"><span>Alle</span><span>offen</span></div>`+ms.map(({m,L})=>`<div class="row tap" data-a="person" data-id="${esc(m.id)}"><span class="t">${esc(m.name)}<small>${m.flat?'Pauschale':eur(S.set.price)+' pro Besuch'}${m.helper?' · Helfer':''}</small></span><span class="amt"${L.open>0?' style="color:var(--acc)"':''}>${eur(L.open)}</span></div>`).join('');
-  h+=`<div class="h"><span>Person hinzufügen</span></div><form class="f" data-f="addMember"><div style="display:flex;gap:8px"><input name="name" required maxlength="30" placeholder="Name"><button class="mk" style="min-height:46px">Dazu</button></div></form>`;
+  h+=`<div class="h"><span>Alle</span><span>offen</span></div>`+ms.map(({m,L})=>`<div class="row tap" data-a="person" data-id="${esc(m.id)}"><span class="t"${m.guardian?' style="padding-left:16px"':''}>${m.guardian?'↳ ':''}${esc(m.name)}<small>${m.guardian?'mit '+esc(nm(m.guardian))+' · ':''}${m.flat?'Pauschale':eur(S.set.price)+' pro Besuch'}${m.helper?' · Helfer':''}</small></span><span class="amt"${L.open>0?' style="color:var(--acc)"':''}>${eur(L.open)}</span></div>`).join('');
+  h+=`<div class="h"><span>Person hinzufügen</span></div><form class="f" data-f="addMember"><div style="display:flex;gap:8px"><input name="name" required maxlength="30" placeholder="Name"><button class="mk" style="min-height:46px">Dazu</button></div>
+  <label>Kommt mit (ohne Handy)?<select name="guardian"><option value="">Nein, eigene Person</option>${adults.map(a=>`<option value="${esc(a.id)}">mit ${esc(a.name)}</option>`).join('')}</select></label></form>`;
   return h}
 
 function adminEinst(){const s=S.set;
@@ -434,6 +457,7 @@ function errText(e){const m=(e&&(e.message||e.error_description))||String(e);
   if(/Invalid login credentials/i.test(m))return 'E-Mail oder Passwort falsch';
   if(/Email not confirmed/i.test(m))return 'Bitte zuerst die E-Mail bestätigen (Link im Postfach)';
   if(/members_name_active/i.test(m))return 'Den Namen gibt es schon';
+  if(/members_companion_name/i.test(m))return 'Den Namen hast du schon';
   if(/duplicate key/i.test(m))return 'Ist schon eingetragen';
   return m.length>120?m.slice(0,120)+'…':m}
 const hm=t=>(t||'').slice(0,5);
@@ -447,11 +471,11 @@ async function reload(){if(!authUser||(!isAdmin&&!myId))return;const my=++gen;
   const N={v:2,members:[],ovr:{},extras:[],sign:{},att:{},pay:[],exp:[],inc:[]};
   N.set={price:+st.price,flatPrice:+st.flat_price,flatFrom:st.flat_from,flatUntil:st.flat_until,max:st.max_players,start:hm(st.start_time),end:hm(st.end_time),anchor:st.anchor,locMo:st.loc_mo,locDi:st.loc_di,code:''};
   const priv=isAdmin;
-  const jobs=[T('members').select('id,name,active,helper,created_at').order('created_at'),T('member_plans').select('*'),T('extra_sessions').select('*'),
+  const jobs=[T('members').select('id,name,active,helper,created_at,guardian_id').order('created_at'),T('member_plans').select('*'),T('extra_sessions').select('*'),
     T('session_overrides').select('*'),T('attendance').select('*'),T('payments').select('*')];
   if(priv)jobs.push(T('incomes').select('*'),T('expenses').select('*'));
   const res=(await Promise.all(jobs)).map(chk);const [mem,plans,ex,ov,at,pay]=res;
-  N.members=mem.map(m=>({id:m.id,name:m.name,active:m.active,helper:m.helper,flat:null}));
+  N.members=mem.map(m=>({id:m.id,name:m.name,active:m.active,helper:m.helper,flat:null,guardian:m.guardian_id||null}));
   plans.forEach(p=>{const m=N.members.find(x=>x.id===p.member_id);if(m)m.flat={amount:+p.flat_amount,from:p.flat_from,until:p.flat_until}});
   N.extras=ex.map(x=>({id:'x'+x.id,date:x.day,start:hm(x.start_time),end:hm(x.end_time),sport:x.sport,loc:x.loc}));
   ov.forEach(o=>{N.ovr[o.session_key]={cancelled:o.cancelled,sport:o.sport||undefined,loc:o.loc||undefined}});
@@ -508,10 +532,13 @@ const R={
   toLogin:async()=>{ui.who='login'},
   toStart:async()=>{await whoAmI()},
   refresh:async()=>{await whoAmI()},
-  join:async sid=>{const pos=await rpc('sign_up',{k:sid});flash(pos<=S.set.max?'Du bist dabei':'Termin voll – Warteliste Platz '+(pos-S.set.max))},
-  leave:async sid=>{await rpc('withdraw',{k:sid});flash('Abgesagt')},
-  here:async sid=>{await rpc('check_in',{k:sid});flash('Eingecheckt')},
-  unhere:async sid=>{await rpc('check_out',{k:sid})},
+  join:async(sid,x)=>{const pos=x?await rpc('sign_up',{k:sid,who:x}):await rpc('sign_up',{k:sid});flash((x?nm(x)+': ':'')+(pos<=S.set.max?'dabei':'Termin voll – Warteliste Platz '+(pos-S.set.max)))},
+  leave:async(sid,x)=>{x?await rpc('withdraw',{k:sid,who:x}):await rpc('withdraw',{k:sid});flash('Abgesagt')},
+  here:async(sid,x)=>{x?await rpc('check_in',{k:sid,who:x}):await rpc('check_in',{k:sid});flash(x?nm(x)+' ist da':'Eingecheckt')},
+  unhere:async(sid,x)=>{x?await rpc('check_out',{k:sid,who:x}):await rpc('check_out',{k:sid})},
+  removeKid:async id=>{await rpc('remove_companion',{who:id});flash('Entfernt')},
+  paidGroup:async mid=>{const rows=peopleAll(mid).map(id=>({member_id:id,amount:ledger(id).open,day:today()})).filter(x=>x.amount>0);
+    if(rows.length){chk(await T('payments').insert(rows));flash(nm(mid)+': '+eur(rows.reduce((a,x)=>a+x.amount,0))+' als bezahlt gebucht')}},
   toggleHere:async(sid,mid)=>{const a=att(sid,mid),v=!present(sid,mid);
     if(a)chk(await T('attendance').update({admin_override:v}).eq('session_key',sid).eq('member_id',mid));
     else chk(await T('attendance').insert({session_key:sid,member_id:mid,self_checked:false,admin_override:v,price:S.set.price}))},
@@ -531,9 +558,9 @@ const R={
   plan:async(mid,x)=>{if(x==='flat')chk(await T('member_plans').upsert({member_id:mid,flat_amount:S.set.flatPrice,flat_from:S.set.flatFrom,flat_until:S.set.flatUntil}));
     else chk(await T('member_plans').delete().eq('member_id',mid))},
   helper:async mid=>{const m=member(mid);chk(await T('members').update({helper:!m.helper}).eq('id',mid));flash(m.name+(m.helper?' sieht die Warteliste nicht mehr':' darf die Warteliste sehen'))},
-  archive:async mid=>{chk(await T('members').update({active:false}).eq('id',mid));
+  archive:async mid=>{chk(await T('members').update({active:false}).or('id.eq.'+mid+',guardian_id.eq.'+mid));
     const keys=Object.keys(S.sign).filter(k=>{const x=getS(k);return x&&x.date>=today()});
-    if(keys.length)chk(await T('signups').delete().eq('member_id',mid).in('session_key',keys));ui.person=null;flash('Person entfernt')},
+    const ids=people(mid);if(keys.length)chk(await T('signups').delete().in('member_id',ids).in('session_key',keys));ui.person=null;flash('Person entfernt')},
   newCode:async()=>{S.set.code=await rpc('new_invite_code');flash('Neuer Einladungslink erstellt – bitte neu verschicken')}
 };
 async function setOvr(sid,patch){const o={...(S.ovr[sid]||{}),...patch};
@@ -560,7 +587,8 @@ const RF={
     chk(await T('incomes').insert({day:d.date,amount:a,label:d.label.trim(),receipt:rc}));flash('Einnahme gespeichert')},
   payAmt:async(d,mid)=>{const a=num(d.amt);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');chk(await T('payments').insert({member_id:mid,amount:a,day:today()}));flash(eur(a)+' gebucht')},
   rename:async(d,mid)=>{chk(await T('members').update({name:d.name.trim()}).eq('id',mid));flash('Name geändert')},
-  addMember:async d=>{const n=d.name.trim();if(!n)return;chk(await T('members').insert({name:n}));flash(n+' hinzugefügt')},
+  addMember:async d=>{const n=d.name.trim();if(!n)return;chk(await T('members').insert(d.guardian?{name:n,guardian_id:d.guardian}:{name:n}));flash(n+' hinzugefügt')},
+  addKid:async d=>{const n=d.name.trim();if(!n)return;await rpc('add_companion',{display_name:n});flash(n+' hinzugefügt')},
   settings:async d=>{const p=num(d.price),fp=num(d.flatPrice),mx=parseInt(d.max,10);
     if(!(p>=0)||!(fp>=0)||!(mx>0))return flash('Bitte gültige Zahlen eingeben');
     if(d.flatUntil<d.flatFrom)return flash('„Bis“ liegt vor „ab“');if(d.end<=d.start)return flash('Ende muss nach Beginn liegen');
@@ -585,11 +613,13 @@ const A={
   tab:id=>{ui.tab=id;ui.sel=null},
   sel:id=>{ui.sel=id||null;scrollTo(0,0)},
   person:id=>{ui.person=id||null;ui.claimShown=null},
-  join:sid=>{const r=join(sid,ui.who);flash(r==='conf'?'Du bist dabei':'Termin voll – du bist auf der Warteliste')},
-  leave:sid=>{const moved=leave(sid,ui.who);flash('Abgesagt'+(moved.length&&canSeeWait(ui.who)?' – '+moved.map(nm).join(', ')+' rückt nach':''))},
-  here:sid=>{const st=status(sid,ui.who);if(!st){if(conf(sid).length>=S.set.max)return flash('Termin ist voll');join(sid,ui.who)}
-    if(status(sid,ui.who)==='wait')return flash('Du stehst noch auf der Warteliste');setAtt(sid,ui.who,{self:true});flash('Eingecheckt')},
-  unhere:sid=>{setAtt(sid,ui.who,{self:false,ovr:null})},
+  join:(sid,x)=>{const w=x||ui.who;if(!people(ui.who).includes(w))return;const r=join(sid,w);flash((x?nm(w)+': ':'')+(r==='conf'?'dabei':'Termin voll – Warteliste'))},
+  leave:(sid,x)=>{const w=x||ui.who;if(!people(ui.who).includes(w))return;if(present(sid,w))return flash('Schon als „da“ gemeldet');const moved=leave(sid,w);flash('Abgesagt'+(moved.length&&canSeeWait(ui.who)?' – '+moved.map(nm).join(', ')+' rückt nach':''))},
+  here:(sid,x)=>{const w=x||ui.who;if(!people(ui.who).includes(w))return;const st=status(sid,w);if(!st){if(conf(sid).length>=S.set.max)return flash('Termin ist voll');join(sid,w)}
+    if(status(sid,w)==='wait')return flash('Steht noch auf der Warteliste');setAtt(sid,w,{self:true});flash(x?nm(w)+' ist da':'Eingecheckt')},
+  unhere:(sid,x)=>{const w=x||ui.who;if(!people(ui.who).includes(w))return;const a=att(sid,w);if(a&&a.ovr==null)setAtt(sid,w,{self:false})},
+  removeKid:id=>{const k=member(id);if(!k||k.guardian!==ui.who)return;k.active=false;Object.keys(S.sign).forEach(sid=>{const x=getS(sid);if(x&&x.date>=today()&&!present(sid,id))S.sign[sid]=list(sid).filter(v=>v!==id)});flash(k.name+' entfernt')},
+  paidGroup:mid=>{let tot=0;peopleAll(mid).forEach(id=>{const L=ledger(id);if(L.open>0){S.pay.push({id:uid(),mid:id,amt:L.open,date:today(),note:''});tot+=L.open}});if(tot)flash(nm(mid)+': '+eur(tot)+' als bezahlt gebucht')},
   toggleHere:(sid,mid)=>{setAtt(sid,mid,{ovr:!present(sid,mid)})},
   adminLeave:(sid,mid)=>{if(present(sid,mid))return flash(nm(mid)+' ist als „da“ markiert – erst auf „Da?“ zurücksetzen');const moved=leave(sid,mid);flash(nm(mid)+' entfernt'+(moved.length?' – '+moved.map(nm).join(', ')+' rückt nach':''))},
   cancel:sid=>{S.ovr[sid]={...S.ovr[sid],cancelled:true};flash('Termin abgesagt')},
@@ -609,11 +639,12 @@ const A={
   stopExp:id=>{const e=S.exp.find(e=>e.id===id);if(e)e.end=today();flash('Wiederholung beendet')},
   plan:(mid,x)=>{const m=member(mid);m.flat=x==='flat'?{amount:S.set.flatPrice,from:S.set.flatFrom,until:S.set.flatUntil}:null},
   helper:mid=>{const m=member(mid);m.helper=!m.helper;flash(m.name+(m.helper?' darf die Warteliste sehen':' sieht die Warteliste nicht mehr'))},
-  archive:mid=>{member(mid).active=false;Object.keys(S.sign).forEach(sid=>{const x=getS(sid);if(x&&x.date>=today())S.sign[sid]=list(sid).filter(x=>x!==mid)});ui.person=null;flash('Person entfernt')},
+  archive:mid=>{kids(mid).forEach(k=>A.archive(k.id));member(mid).active=false;Object.keys(S.sign).forEach(sid=>{const x=getS(sid);if(x&&x.date>=today())S.sign[sid]=list(sid).filter(x=>x!==mid)});ui.person=null;flash('Person entfernt')},
   copy:txt=>{try{navigator.clipboard.writeText(txt).then(()=>{flash('Link kopiert');render()},()=>{flash('Kopieren nicht möglich – bitte Link markieren');render()})}catch(e){flash('Kopieren nicht möglich')}}
 };
 const F={
-  join:d=>{const n=d.name.trim();if(!n)return;const ex=S.members.find(m=>m.active&&m.name.toLowerCase()===n.toLowerCase());
+  addKid:d=>{const n=d.name.trim();if(!n)return;if(kids(ui.who).some(k=>k.name.toLowerCase()===n.toLowerCase()))return flash('Den Namen hast du schon');if(kids(ui.who).length>=6)return flash('Höchstens 6 Mitkommende');S.members.push({id:'m'+uid(),name:n,flat:null,active:true,guardian:ui.who});flash(n+' hinzugefügt')},
+  join:d=>{const n=d.name.trim();if(!n)return;const ex=S.members.find(m=>m.active&&!m.guardian&&m.name.toLowerCase()===n.toLowerCase());
     if(ex)return flash('„'+ex.name+'“ gibt es schon – bitte z. B. mit Nachnamen-Initial eintragen');
     const m={id:'m'+uid(),name:n,flat:null,active:true};S.members.push(m);ui.who=m.id;flash('Willkommen, '+n)},
   extra:d=>{if(d.end<=d.start)return flash('Ende muss nach Beginn liegen');const id='x'+uid();S.extras.push({id,date:d.date,start:d.start,end:d.end,sport:d.sport,loc:d.loc.trim()});flash('Extra-Termin angelegt')},
@@ -625,7 +656,7 @@ const F={
     S.inc.push({id:uid(),label:d.label.trim(),cat:'Sonstige Einnahme',amount:a,date:d.date,receipt:rc});flash('Einnahme gespeichert')},
   payAmt:(d,mid)=>{const a=num(d.amt);if(!(a>0))return flash('Bitte gültigen Betrag eingeben');S.pay.push({id:uid(),mid,amt:a,date:today(),note:''});flash(eur(a)+' gebucht')},
   rename:(d,mid)=>{member(mid).name=d.name.trim();flash('Name geändert')},
-  addMember:d=>{const n=d.name.trim();if(!n)return;S.members.push({id:'m'+uid(),name:n,flat:null,active:true});flash(n+' hinzugefügt')},
+  addMember:d=>{const n=d.name.trim();if(!n)return;const g=d.guardian||null;S.members.push({id:'m'+uid(),name:n,flat:null,active:true,guardian:g});flash(n+' hinzugefügt')},
   settings:d=>{const p=num(d.price),fp=num(d.flatPrice),mx=parseInt(d.max,10);
     if(!(p>=0)||!(fp>=0)||!(mx>0))return flash('Bitte gültige Zahlen eingeben');
     if(d.flatUntil<d.flatFrom)return flash('„Bis“ liegt vor „ab“');
